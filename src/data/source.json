@@ -1,0 +1,263 @@
+{
+  "sourceTreeData": [
+    {
+      "annotations": {
+        "XmlRootElement": {
+          "name": {
+            "type": "STRING",
+            "value": "employee"
+          }
+        }
+      },
+      "title": "Employee",
+      "key": "0",
+      "type": "RecordTypeDef",
+      "ref": null,
+      "children": [
+        {
+          "annotations": {
+            "XmlAttribute": {
+              "name": {
+                "type": "STRING",
+                "value": "ID"
+              }
+            }
+          },
+          "title": "id",
+          "key": "1",
+          "type": "INT",
+          "ref": null,
+          "isUsed": false,
+          "isArray": false
+        },
+        {
+          "annotations": {
+            "XmlElement": {
+              "name": {
+                "type": "STRING",
+                "value": "employeeName"
+              }
+            }
+          },
+          "title": "name",
+          "key": "2",
+          "type": "STRING",
+          "ref": null,
+          "isUsed": false,
+          "isArray": false
+        },
+        {
+          "annotations": {},
+          "title": "salary",
+          "key": "3",
+          "type": "LONG",
+          "ref": null,
+          "isUsed": false,
+          "isArray": false
+        },
+        {
+          "annotations": {},
+          "title": "department",
+          "key": "4",
+          "type": "TypeRef",
+          "ref": "Department",
+          "children": [
+            {
+              "annotations": {},
+              "title": "id",
+              "key": "5",
+              "type": "STRING",
+              "ref": null,
+              "isUsed": false,
+              "isArray": false
+            },
+            {
+              "annotations": {},
+              "title": "name",
+              "key": "6",
+              "type": "STRING",
+              "ref": null,
+              "isUsed": false,
+              "isArray": false
+            }
+          ],
+          "isUsed": false,
+          "isArray": false
+        },
+        {
+          "annotations": {},
+          "title": "department",
+          "key": "7",
+          "type": "RecordDef",
+          "ref": null,
+          "children": [
+            {
+              "annotations": {},
+              "title": "id",
+              "key": "8",
+              "type": "STRING",
+              "ref": null,
+              "isUsed": false,
+              "isArray": false
+            },
+            {
+              "annotations": {},
+              "title": "name",
+              "key": "9",
+              "type": "STRING",
+              "ref": null,
+              "isUsed": false,
+              "isArray": false
+            }
+          ],
+          "isUsed": false,
+          "isArray": false
+        },
+        {
+          "annotations": {
+            "XmlElementWrapper": {
+              "name": {
+                "type": "STRING",
+                "value": "departments"
+              }
+            },
+            "XmlElement": {
+              "name": {
+                "type": "STRING",
+                "value": "department"
+              },
+              "min": {
+                "type": "NUMBER",
+                "value": "30"
+              }
+            }
+          },
+          "title": "departments",
+          "key": "10",
+          "type": "RecordDef",
+          "ref": null,
+          "children": [
+            {
+              "annotations": {},
+              "title": "id",
+              "key": "11",
+              "type": "STRING",
+              "ref": null,
+              "isUsed": false,
+              "isArray": false
+            },
+            {
+              "annotations": {},
+              "title": "name",
+              "key": "12",
+              "type": "STRING",
+              "ref": null,
+              "isUsed": false,
+              "isArray": false
+            }
+          ],
+          "isUsed": false,
+          "isArray": true
+        },
+        {
+          "annotations": {
+            "XmlElementWrapper": {
+              "name": {
+                "type": "STRING",
+                "value": "hobbies"
+              }
+            },
+            "XmlElement": {
+              "name": {
+                "type": "STRING",
+                "value": "hobby"
+              }
+            }
+          },
+          "title": "hobbies",
+          "key": "13",
+          "type": "STRING",
+          "ref": null,
+          "isUsed": false,
+          "isArray": true
+        },
+        {
+          "annotations": {
+            "XmlTransient": {}
+          },
+          "title": "ignored",
+          "key": "14",
+          "type": "LONG",
+          "ref": null,
+          "isUsed": false,
+          "isArray": false
+        },
+        {
+          "annotations": null,
+          "title": "Enum",
+          "key": "15",
+          "type": "Enum",
+          "ref": null,
+          "children": [
+            {
+              "annotations": {
+                "XmlElement": {
+                  "name": {
+                    "type": "STRING",
+                    "value": "department"
+                  }
+                }
+              },
+              "title": "department",
+              "key": "16",
+              "type": "TypeRef",
+              "ref": "Department",
+              "children": [
+                {
+                  "annotations": {},
+                  "title": "id",
+                  "key": "17",
+                  "type": "STRING",
+                  "ref": null,
+                  "isUsed": false,
+                  "isArray": false
+                },
+                {
+                  "annotations": {},
+                  "title": "name",
+                  "key": "18",
+                  "type": "STRING",
+                  "ref": null,
+                  "isUsed": false,
+                  "isArray": false
+                }
+              ],
+              "isUsed": false,
+              "isArray": false
+            },
+            {
+              "annotations": {
+                "XmlElement": {
+                  "name": {
+                    "type": "STRING",
+                    "value": "hobby"
+                  }
+                }
+              },
+              "title": "hobby",
+              "key": "19",
+              "type": "TypeRef",
+              "ref": "Hobby",
+              "isUsed": false,
+              "isArray": false
+            }
+          ],
+          "isUsed": false,
+          "isArray": false
+        }
+      ],
+      "isUsed": false,
+      "isArray": false
+    }
+  ]
+}
