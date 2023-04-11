@@ -10,8 +10,7 @@
       name="description"
       content="A data mapping diagram to show and edit the relationships between items in two different trees."
     />
-    <script src="https://unpkg.com/gojs/release/go-debug.js"></script>
-    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="../assets/css/style.css" />
     <!-- Copyright 1998-2023 by Northwoods Software Corporation. -->
     <title>GoJS Tree Mapper</title>
   </head>
@@ -101,7 +100,7 @@
       <!-- * * * * * * * * * * * * * -->
       <!-- Start of GoJS sample code -->
 
-      <script src="../release/go.js"></script>
+      <script src="https://unpkg.com/gojs/release/go-debug.js"></script>
       <div id="allSampleContent" class="p-4 w-full">
         <script id="code">
           // Use a TreeNode so that when a node is not visible because a parent is collapsed,
@@ -352,9 +351,8 @@
             var root = { key: 0, group: -1 };
             nodeDataArray.push(root);
             for (var i = 0; i < 11; ) {
-              i = makeTree(1, i, 17, nodeDataArray, linkDataArray, root, -1, root.key);
+              i = makeTree(3, i, 17, nodeDataArray, linkDataArray, root, -1, root.key);
             }
-            console.log("Left", nodeDataArray);
 
             // initialize tree on right side
             root = { key: 1000, group: -2 };
@@ -362,7 +360,6 @@
             for (var i = 0; i < 15; ) {
               i = makeTree(3, i, 15, nodeDataArray, linkDataArray, root, -2, root.key);
             }
-            console.log("Right", nodeDataArray);
             myDiagram.model = new go.GraphLinksModel(nodeDataArray, linkDataArray);
           }
 
