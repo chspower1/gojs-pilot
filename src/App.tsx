@@ -1,11 +1,11 @@
-// App.js
-import React, { useEffect, useState } from "react";
-import Test from "./components/Test";
-
+import DoubleTreeMapper from "./components/DoubleTreeMapper";
+import "./App.css";
+import Picture from "./components/Picture";
 export default function App() {
   return (
-    <div style={{ width: "1000px", height: "1000px" }}>
-      <Test />
-    </div>
+    <>
+      <DoubleTreeMapper />
+      {/* <Picture /> */}
+    </>
   );
 }

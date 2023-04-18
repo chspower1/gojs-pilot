@@ -1,8 +1,9 @@
 interface MakeTreeProps {
   sourceTreeData: SourceTreeData[];
-  parentKey: string;
-  goJsNodes: any[];
-  groupKey: number;
+  nodeDataArray: go.ObjectData[];
+  linkDataArray: go.ObjectData[];
+  parentKey?: number | string;
+  groupKey: string;
 }
 
 interface SourceTreeData {
@@ -14,21 +15,34 @@ interface Children {
   title: string;
   [key: string]: any;
 }
-export const makeTree = ({ sourceTreeData, parentKey, goJsNodes, groupKey }: MakeTreeProps) => {
+let [nodeKey, linkKey] = [0, 0];
+export const makeTree = ({
+  sourceTreeData,
+  nodeDataArray,
+  linkDataArray,
+  parentKey,
+  groupKey,
+}: MakeTreeProps) => {
   sourceTreeData.forEach((data) => {
-    const newItem = {
-      key: data.key,
+    const newNode = {
+      key: nodeKey,
       name: data.title,
-      parent: parentKey,
       group: groupKey,
     };
-    goJsNodes.push(newItem);
+    if (parentKey !== undefined) {
+      const newLink = { key: linkKey, from: parentKey, to: nodeKey };
+      linkDataArray.push(newLink);
+    }
+    nodeKey++;
+    linkKey++;
+    nodeDataArray.push(newNode);
     if (data.children?.length! > 0) {
       makeTree({
         sourceTreeData: data.children!,
-        parentKey: data.key,
-        goJsNodes,
+        nodeDataArray,
+        linkDataArray,
         groupKey,
+        parentKey: nodeKey - 1,
       });
     }
   });
