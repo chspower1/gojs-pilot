@@ -25,6 +25,12 @@ const initDiagram = () => {
     "linkingTool.linkValidation": checkLink,
     "relinkingTool.linkValidation": checkLink,
     "undoManager.isEnabled": true,
+    LayoutCompleted: (e) => {
+      e.diagram.nodes.each((node) => {
+        const table = node.findObject("TABLE");
+        console.log(table);
+      });
+    },
   });
 
   // 애니메이션 제거 속성
@@ -34,16 +40,22 @@ const initDiagram = () => {
   diagram.nodeTemplate = $(
     TreeNode,
     "Horizontal",
+
     {
       movable: false,
       copyable: false,
       deletable: false,
       selectionAdorned: false,
       background: "white",
-      // mouseEnter: (e, node) => (node.background = "aquamarine"),
+      mouseEnter: (e, node) => (node.background = "#d3ebf5"),
+      //@ts-ignore
+      mouseLeave: (e, node) => (node.background = node.isSelected ? "#d3ebf5" : "white"),
+      click: (e, node) => {
+        console.log(node.findBindingPanel()?.data);
+      },
       // mouseLeave: (e, node) => (node.background = "white"),
     },
-    new go.Binding("background", "isSelected", (s) => (s ? "skyblue" : "white")).ofObject(),
+    new go.Binding("background", "isSelected", (s) => (s ? "#d3ebf5" : "white")).ofObject(),
     new go.Binding("fromLinkable", "group", (k) => k === "source"),
     new go.Binding("toLinkable", "group", (k) => k === "target"),
 
@@ -68,19 +80,25 @@ const initDiagram = () => {
       go.Panel,
       "Auto",
       { position: new go.Point(16, 0) },
-      $(go.Shape, "RoundedRectangle", { fill: "white", width: 200, height: 20 }),
+      $(go.Shape, "RoundedRectangle", {
+        fill: "transparent",
+        width: 200,
+        height: 40,
+        stroke: "gray",
+      }),
+
       $(
         go.Picture,
         {
           source: `${process.env.PUBLIC_URL}/copy.png`,
-          width: 20,
-          height: 20,
+          width: 30,
+          height: 30,
           alignment: go.Spot.Left,
-          // margin: 10,
+          margin: 10,
         },
         new go.Binding("source", "type", (type) => `${process.env.PUBLIC_URL}/${type}.png`)
       ),
-      $(go.TextBlock, new go.Binding("text", "name"))
+      $(go.TextBlock, { alignment: go.Spot.Center }, new go.Binding("text", "name"))
     )
   );
 
@@ -111,22 +129,30 @@ const initDiagram = () => {
   diagram.groupTemplate = $(
     go.Group,
     "Auto",
-    { deletable: false, layout: makeGroupLayout($) },
+    {
+      layout: makeGroupLayout($),
+
+      // autoScrollRegion: new go.Rect(0, 0, 50, 50),
+      // // 스크롤이 적용되는 마진 설정
+      // scrollMargin: new go.Margin(50, 50, 50, 50),
+    },
     new go.Binding("position", "xy", go.Point.parse).makeTwoWay(go.Point.stringify),
     new go.Binding("layout", "width", makeGroupLayout),
-    $(go.Shape, { fill: "white", stroke: "lightgray" }),
+
+    $(go.Shape, { fill: "white", stroke: "gray" }),
     $(
       go.Panel,
-      "Vertical",
+      "Auto",
       { defaultAlignment: go.Spot.Left },
       $(
         go.TextBlock,
-        { font: "bold 14pt sans-serif", margin: new go.Margin(5, 5, 0, 5) },
+        { font: "bold 14pt sans-serif", margin: new go.Margin(5, 5, 0, 5), row: 0, column: 0 },
         new go.Binding("text", "key")
       ),
       $(go.Placeholder, { padding: 100 })
     )
   );
+
   diagram.model = new go.GraphLinksModel({
     linkKeyProperty: "key",
   });
@@ -137,7 +163,46 @@ const getRandomInt = (min: number, max: number) => {
   max = Math.floor(max);
   return Math.floor(Math.random() * (max - min)) + min; //최댓값은 제외, 최솟값은 포함
 };
-
+const defaultLinkDataArray: go.ObjectData[] = [
+  { key: "link_0", from: "source_0", to: "source_1" },
+  { key: "link_1", from: "source_0", to: "source_2" },
+  { key: "link_2", from: "source_0", to: "source_3" },
+  { key: "link_3", from: "source_0", to: "source_4" },
+  { key: "link_4", from: "source_4", to: "source_5" },
+  { key: "link_5", from: "source_4", to: "source_6" },
+  { key: "link_6", from: "source_0", to: "source_7" },
+  { key: "link_7", from: "source_7", to: "source_8" },
+  { key: "link_8", from: "source_7", to: "source_9" },
+  { key: "link_9", from: "source_0", to: "source_10" },
+  { key: "link_10", from: "source_10", to: "source_11" },
+  { key: "link_11", from: "source_10", to: "source_12" },
+  { key: "link_12", from: "source_0", to: "source_13" },
+  { key: "link_13", from: "source_0", to: "source_14" },
+  { key: "link_14", from: "source_0", to: "source_15" },
+  { key: "link_15", from: "source_15", to: "source_16" },
+  { key: "link_16", from: "source_16", to: "source_17" },
+  { key: "link_17", from: "source_16", to: "source_18" },
+  { key: "link_18", from: "source_15", to: "source_19" },
+  { key: "link_19", from: "target_0", to: "target_1" },
+  { key: "link_20", from: "target_0", to: "target_2" },
+  { key: "link_21", from: "target_0", to: "target_3" },
+  { key: "link_22", from: "target_0", to: "target_4" },
+  { key: "link_23", from: "target_4", to: "target_5" },
+  { key: "link_24", from: "target_4", to: "target_6" },
+  { key: "link_25", from: "target_0", to: "target_7" },
+  { key: "link_26", from: "target_7", to: "target_8" },
+  { key: "link_27", from: "target_7", to: "target_9" },
+  { key: "link_28", from: "target_0", to: "target_10" },
+  { key: "link_29", from: "target_10", to: "target_11" },
+  { key: "link_30", from: "target_10", to: "target_12" },
+  { key: "link_31", from: "target_0", to: "target_13" },
+  { key: "link_32", from: "target_0", to: "target_14" },
+  { key: "link_33", from: "target_0", to: "target_15" },
+  { key: "link_34", from: "target_15", to: "target_16" },
+  { key: "link_35", from: "target_16", to: "target_17" },
+  { key: "link_36", from: "target_16", to: "target_18" },
+  { key: "link_37", from: "target_15", to: "target_19" },
+];
 const DoubleTreeMapper = () => {
   const [sourceDataArray, setSourceDataArray] = useState<go.ObjectData[]>([
     { key: "source", isGroup: true, name: "source", xy: "0 0", width: 400 },
@@ -189,46 +254,7 @@ const DoubleTreeMapper = () => {
     ...sourceDataArray,
     ...targetDataArray,
   ]);
-  const [linkDataArray, setLinkDataArray] = useState<go.ObjectData[]>([
-    { key: "link_0", from: "source_0", to: "source_1" },
-    { key: "link_1", from: "source_0", to: "source_2" },
-    { key: "link_2", from: "source_0", to: "source_3" },
-    { key: "link_3", from: "source_0", to: "source_4" },
-    { key: "link_4", from: "source_4", to: "source_5" },
-    { key: "link_5", from: "source_4", to: "source_6" },
-    { key: "link_6", from: "source_0", to: "source_7" },
-    { key: "link_7", from: "source_7", to: "source_8" },
-    { key: "link_8", from: "source_7", to: "source_9" },
-    { key: "link_9", from: "source_0", to: "source_10" },
-    { key: "link_10", from: "source_10", to: "source_11" },
-    { key: "link_11", from: "source_10", to: "source_12" },
-    { key: "link_12", from: "source_0", to: "source_13" },
-    { key: "link_13", from: "source_0", to: "source_14" },
-    { key: "link_14", from: "source_0", to: "source_15" },
-    { key: "link_15", from: "source_15", to: "source_16" },
-    { key: "link_16", from: "source_16", to: "source_17" },
-    { key: "link_17", from: "source_16", to: "source_18" },
-    { key: "link_18", from: "source_15", to: "source_19" },
-    { key: "link_19", from: "target_0", to: "target_1" },
-    { key: "link_20", from: "target_0", to: "target_2" },
-    { key: "link_21", from: "target_0", to: "target_3" },
-    { key: "link_22", from: "target_0", to: "target_4" },
-    { key: "link_23", from: "target_4", to: "target_5" },
-    { key: "link_24", from: "target_4", to: "target_6" },
-    { key: "link_25", from: "target_0", to: "target_7" },
-    { key: "link_26", from: "target_7", to: "target_8" },
-    { key: "link_27", from: "target_7", to: "target_9" },
-    { key: "link_28", from: "target_0", to: "target_10" },
-    { key: "link_29", from: "target_10", to: "target_11" },
-    { key: "link_30", from: "target_10", to: "target_12" },
-    { key: "link_31", from: "target_0", to: "target_13" },
-    { key: "link_32", from: "target_0", to: "target_14" },
-    { key: "link_33", from: "target_0", to: "target_15" },
-    { key: "link_34", from: "target_15", to: "target_16" },
-    { key: "link_35", from: "target_16", to: "target_17" },
-    { key: "link_36", from: "target_16", to: "target_18" },
-    { key: "link_37", from: "target_15", to: "target_19" },
-  ]);
+  const [linkDataArray, setLinkDataArray] = useState<go.ObjectData[]>(defaultLinkDataArray);
   const [isChanged, setIsChanged] = useState(false);
   const onModelChange = (event: go.IncrementalData) => {
     console.log(event);
@@ -267,11 +293,13 @@ const DoubleTreeMapper = () => {
   };
   const handleClickChangeData = () => {
     setIsChanged(!isChanged);
+    setLinkDataArray(defaultLinkDataArray);
     if (isChanged) {
       setNodeDataArray([...sourceDataArray, ...targetDataArray]);
     } else {
       const newNodeDataArray: go.ObjectData[] = [
         { key: "source", isGroup: true, name: "source", xy: "0 0", width: 400 },
+        { key: "target", isGroup: true, name: "target", xy: "650 0", width: 10 },
       ];
       const newLinkDataArray: go.ObjectData[] = [];
       makeTree({
@@ -279,6 +307,12 @@ const DoubleTreeMapper = () => {
         nodeDataArray: newNodeDataArray,
         linkDataArray: newLinkDataArray,
         groupKey: "source",
+      });
+      makeTree({
+        sourceTreeData: longTarget.sourceTreeData,
+        nodeDataArray: newNodeDataArray,
+        linkDataArray: newLinkDataArray,
+        groupKey: "target",
       });
 
       console.log(newNodeDataArray);
@@ -289,7 +323,6 @@ const DoubleTreeMapper = () => {
     }
   };
   useEffect(() => {
-    console.log(sourceDataArray);
     setNodeDataArray([...sourceDataArray, ...targetDataArray]);
   }, [sourceDataArray, targetDataArray]);
   return (
