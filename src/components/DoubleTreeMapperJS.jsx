@@ -56,7 +56,17 @@ class MappingLink extends go.Link {
     return result;
   }
 }
-// function
+class GroupTreeLayout extends go.TreeLayout {
+  initialOrigin() {
+    if (this.group) {
+      var sized = this.group.findObject("SIZED");
+      if (sized) return sized.getDocumentPoint(new go.Spot(0, 0, 4, 4)); // top-left margin
+    }
+    return this.arrangementOrigin;
+  }
+}
+
+// Function
 function handleTreeCollapseExpand(e) {
   e.subject.each((n) => {
     n.findExternalTreeLinksConnected().each((l) => l.invalidateRoute());
@@ -98,7 +108,6 @@ const initDiagram = () => {
       selectionAdorned: false,
       background: "white",
       mouseEnter: (e, node) => (node.background = "#d3ebf5"),
-      //@ts-ignore
       mouseLeave: (e, node) => (node.background = node.isSelected ? "#d3ebf5" : "white"),
       click: (e, node) => {
         console.log(node.findBindingPanel()?.data);
@@ -172,22 +181,31 @@ const initDiagram = () => {
       { isTreeLink: false, isLayoutPositioned: false, layerName: "Foreground" },
       { fromSpot: go.Spot.Right, toSpot: go.Spot.Left },
       { relinkableFrom: true, relinkableTo: true },
-      $(go.Shape, { stroke: "teal", strokeWidth: 2 })
+      $(go.Shape, { stroke: "teal", strokeWidth: 2 }),
+      $(go.Shape, { toArrow: "Standard", stroke: null, fill: "teal" })
     )
   );
 
   diagram.groupTemplate = $(
     go.Group,
-    "Auto",
+    "Table",
     {
-      layout: makeGroupLayout($),
-
-      // autoScrollRegion: new go.Rect(0, 0, 50, 50),
-      // // 스크롤이 적용되는 마진 설정
-      // scrollMargin: new go.Margin(50, 50, 50, 50),
+      layout: $(
+        GroupTreeLayout, // taken from samples/treeView.html
+        {
+          alignment: GroupTreeLayout.AlignmentStart,
+          angle: 0,
+          compaction: GroupTreeLayout.CompactionNone,
+          layerSpacing: 16,
+          layerSpacingParentOverlap: 0.8,
+          nodeIndentPastParent: 1.0,
+          nodeSpacing: 0,
+          setsPortSpot: false,
+          setsChildPortSpot: false,
+        }
+      ),
     },
     new go.Binding("position", "xy", go.Point.parse).makeTwoWay(go.Point.stringify),
-    new go.Binding("layout", "width", makeGroupLayout),
 
     $(go.Shape, { fill: "white", stroke: "gray" }),
     $(
