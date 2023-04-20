@@ -20,7 +20,42 @@ class TreeNode extends go.Node {
     return n;
   }
 }
+class MappingLink extends go.Link {
+  getLinkPoint(node, port, spot, from, ortho, othernode, otherport) {
+    if (ROUTINGSTYLE !== "ToGroup") {
+      return super.getLinkPoint(node, port, spot, from, ortho, othernode, otherport);
+    } else {
+      var r = port.getDocumentBounds();
+      var group = node.containingGroup;
+      var b = group !== null ? group.actualBounds : node.actualBounds;
+      var op = othernode.getDocumentPoint(go.Spot.Center);
+      var x = op.x > r.centerX ? b.right : b.left;
+      return new go.Point(x, r.centerY);
+    }
+  }
 
+  computePoints() {
+    var result = super.computePoints();
+    if (result && ROUTINGSTYLE === "ToNode") {
+      var fn = this.fromNode;
+      var tn = this.toNode;
+      if (fn && tn) {
+        var fg = fn.containingGroup;
+        var fb = fg ? fg.actualBounds : fn.actualBounds;
+        var fpt = this.getPoint(0);
+        var tg = tn.containingGroup;
+        var tb = tg ? tg.actualBounds : tn.actualBounds;
+        var tpt = this.getPoint(this.pointsCount - 1);
+        this.setPoint(1, new go.Point(fpt.x < tpt.x ? fb.right : fb.left, fpt.y));
+        this.setPoint(
+          this.pointsCount - 2,
+          new go.Point(fpt.x < tpt.x ? tb.left : tb.right, tpt.y)
+        );
+      }
+    }
+    return result;
+  }
+}
 // function
 function handleTreeCollapseExpand(e) {
   e.subject.each((n) => {
@@ -133,7 +168,7 @@ const initDiagram = () => {
   diagram.linkTemplateMap.add(
     "Mapping",
     $(
-      go.Link,
+      MappingLink,
       { isTreeLink: false, isLayoutPositioned: false, layerName: "Foreground" },
       { fromSpot: go.Spot.Right, toSpot: go.Spot.Left },
       { relinkableFrom: true, relinkableTo: true },
