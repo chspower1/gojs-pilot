@@ -11,6 +11,7 @@ class GroupTreeLayout extends go.TreeLayout {
 }
 
 const init = () => {
+  const $ = go.GraphObject.make;
   go.GraphObject.defineBuilder("AutoRepeatButton", function (args) {
     var repeat = go.GraphObject.takeBuilderArgument(args, 50, function (x) {
       return typeof x === "number";
@@ -18,7 +19,7 @@ const init = () => {
     var delay = go.GraphObject.takeBuilderArgument(args, 500, function (x) {
       return typeof x === "number";
     });
-    var $ = go.GraphObject.make;
+
     // some internal helper functions for auto-repeating
     function delayClicking(e, obj) {
       endClicking(e, obj);
@@ -75,7 +76,6 @@ const init = () => {
   });
 
   go.GraphObject.defineBuilder("ScrollingTable", function (args) {
-    var $ = go.GraphObject.make;
     var tablename = go.GraphObject.takeBuilderArgument(args, "TABLE");
 
     // an internal helper function used by the THUMB for scrolling to a Y-axis point in local coordinates
@@ -255,7 +255,7 @@ const init = () => {
           {
             name: "UP",
             row: 0,
-            opacity: 0,
+            opacity: 100,
             click: function (e, obj) {
               e.handled = true;
               incrTableIndex(obj, -1);
@@ -317,12 +317,12 @@ const init = () => {
       )
     );
   });
-  const $ = go.GraphObject.make;
+
   const myDiagram = $(
     go.Diagram,
     // create a Diagram for the DIV HTML element
     {
-      scrollMode: go.Diagram.InfiniteScroll,
+      // scrollMode: go.Diagram.InfiniteScroll,
       InitialLayoutCompleted: (e) => e.diagram.nodes.each(updateGroupInteraction),
       "resizingTool.dragsMembers": false,
       "resizingTool.updateAdornments": function (part) {
@@ -354,6 +354,7 @@ const init = () => {
   );
 
   function scrollGroup(grp, unit, dir, dist) {
+    console.log("scrollGroup");
     if (grp instanceof go.GraphObject) grp = grp.part;
     if (!(grp instanceof go.Group)) return;
     var diag = grp.diagram;
@@ -414,6 +415,7 @@ const init = () => {
         }
         break;
     }
+    console.log("dy", dy, "dx", dx);
     if (dx > 0) dx = Math.min(dx, view.left + 4 - bnds.left); // top-left margin
     else if (dx < 0 && view.right - 2 > bnds.right) dx = 0;
     if (dy > 0) dy = Math.min(dy, view.top + 4 - bnds.top); // top-left margin
@@ -653,7 +655,7 @@ const init = () => {
 };
 const GroupScroll = () => {
   const nodeDataArray = [
-    { key: 0, isGroup: true, text: "Group", loc: "0 0", size: "200 50" },
+    { key: 0, isGroup: true, text: "Group", loc: "0 0", size: "100 100" },
     { key: 1, text: "Concept Maps", group: 0 },
     { key: 2, text: "Organized Knowledge", group: 0 },
     { key: 3, text: "Context Dependent", group: 0 },
