@@ -5,60 +5,27 @@ import checkLink from "../utils/checkLink";
 import makeGroupLayout from "../utils/makeGroupLayout";
 import longTarget from "../data/target_long.json";
 import { makeTree } from "../makeTree";
+
+// Constant
+let ROUTINGSTYLE = "ToNode";
+
+// Class
 class TreeNode extends go.Node {
-  constructor() {
-    super();
-    this.treeExpandedChanged = (node) => {
-      if (node.containingGroup !== null) {
-        node.containingGroup.findExternalLinksConnected().each((l) => l.invalidateRoute());
-      }
-    };
+  findVisibleNode() {
+    // redirect links to lowest visible "ancestor" in the tree
+    var n = this;
+    while (n !== null && !n.isVisible()) {
+      n = n.findTreeParentNode();
+    }
+    return n;
   }
 }
-let ROUTINGSTYLE = "ToGroup";
-class MappingLink extends go.Link {
-  getLinkPoint(
-    node: go.Node,
-    port: go.Part,
-    spot: go.Spot,
-    from: any,
-    ortho: any,
-    othernode: any,
-    otherport: any
-  ) {
-    if (ROUTINGSTYLE !== "ToGroup") {
-      return super.getLinkPoint(node, port, spot, from, ortho, othernode, otherport);
-    } else {
-      var r = port.getDocumentBounds();
-      var group = node.containingGroup;
-      var b = group !== null ? group.actualBounds : node.actualBounds;
-      var op = othernode.getDocumentPoint(go.Spot.Center);
-      var x = op.x > r.centerX ? b.right : b.left;
-      return new go.Point(x, r.centerY);
-    }
-  }
 
-  computePoints() {
-    var result = super.computePoints();
-    if (result && ROUTINGSTYLE === "ToNode") {
-      var fn = this.fromNode;
-      var tn = this.toNode;
-      if (fn && tn) {
-        var fg = fn.containingGroup;
-        var fb = fg ? fg.actualBounds : fn.actualBounds;
-        var fpt = this.getPoint(0);
-        var tg = tn.containingGroup;
-        var tb = tg ? tg.actualBounds : tn.actualBounds;
-        var tpt = this.getPoint(this.pointsCount - 1);
-        this.setPoint(1, new go.Point(fpt.x < tpt.x ? fb.right : fb.left, fpt.y));
-        this.setPoint(
-          this.pointsCount - 2,
-          new go.Point(fpt.x < tpt.x ? tb.left : tb.right, tpt.y)
-        );
-      }
-    }
-    return result;
-  }
+// function
+function handleTreeCollapseExpand(e) {
+  e.subject.each((n) => {
+    n.findExternalTreeLinksConnected().each((l) => l.invalidateRoute());
+  });
 }
 
 const initDiagram = () => {
@@ -66,6 +33,8 @@ const initDiagram = () => {
   const diagram = $(go.Diagram, {
     "commandHandler.copiesTree": true,
     "commandHandler.deletesTree": true,
+    TreeCollapsed: handleTreeCollapseExpand,
+    TreeExpanded: handleTreeCollapseExpand,
     // newly drawn links always map a node in one tree to a node in another tree
     "linkingTool.archetypeLinkData": { category: "Mapping" },
     "linkingTool.linkValidation": checkLink,
@@ -164,7 +133,7 @@ const initDiagram = () => {
   diagram.linkTemplateMap.add(
     "Mapping",
     $(
-      MappingLink,
+      go.Link,
       { isTreeLink: false, isLayoutPositioned: false, layerName: "Foreground" },
       { fromSpot: go.Spot.Right, toSpot: go.Spot.Left },
       { relinkableFrom: true, relinkableTo: true },
@@ -205,12 +174,12 @@ const initDiagram = () => {
 
   return diagram;
 };
-const getRandomInt = (min: number, max: number) => {
+const getRandomInt = (min, max) => {
   min = Math.ceil(min);
   max = Math.floor(max);
   return Math.floor(Math.random() * (max - min)) + min; //최댓값은 제외, 최솟값은 포함
 };
-const defaultLinkDataArray: go.ObjectData[] = [
+const defaultLinkDataArray = [
   { key: "link_0", from: "source_0", to: "source_1" },
   { key: "link_1", from: "source_0", to: "source_2" },
   { key: "link_2", from: "source_0", to: "source_3" },
@@ -251,7 +220,7 @@ const defaultLinkDataArray: go.ObjectData[] = [
   { key: "link_37", from: "target_15", to: "target_19" },
 ];
 const DoubleTreeMapper = () => {
-  const [sourceDataArray, setSourceDataArray] = useState<go.ObjectData[]>([
+  const [sourceDataArray, setSourceDataArray] = useState([
     { key: "source", isGroup: true, name: "source", xy: "0 0", width: 400 },
     { key: "source_0", name: "Employee", type: "copy", group: "source" },
     { key: "source_1", name: "id", type: "string", group: "source" },
@@ -274,7 +243,7 @@ const DoubleTreeMapper = () => {
     { key: "source_18", name: "name", group: "source" },
     { key: "source_19", name: "hobby", group: "source" },
   ]);
-  const [targetDataArray, setTargetDataArray] = useState<go.ObjectData[]>([
+  const [targetDataArray, setTargetDataArray] = useState([
     { key: "target", isGroup: true, name: "target", xy: "650 0", width: 10 },
     { key: "target_0", name: "Employee", group: "target" },
     { key: "target_1", name: "id", group: "target" },
@@ -297,13 +266,10 @@ const DoubleTreeMapper = () => {
     { key: "target_18", name: "name", group: "target" },
     { key: "target_19", name: "hobby", group: "target" },
   ]);
-  const [nodeDataArray, setNodeDataArray] = useState<go.ObjectData[]>([
-    ...sourceDataArray,
-    ...targetDataArray,
-  ]);
-  const [linkDataArray, setLinkDataArray] = useState<go.ObjectData[]>(defaultLinkDataArray);
+  const [nodeDataArray, setNodeDataArray] = useState([...sourceDataArray, ...targetDataArray]);
+  const [linkDataArray, setLinkDataArray] = useState(defaultLinkDataArray);
   const [isChanged, setIsChanged] = useState(false);
-  const onModelChange = (event: go.IncrementalData) => {
+  const onModelChange = (event) => {
     console.log(event);
   };
 
@@ -344,11 +310,11 @@ const DoubleTreeMapper = () => {
     if (isChanged) {
       setNodeDataArray([...sourceDataArray, ...targetDataArray]);
     } else {
-      const newNodeDataArray: go.ObjectData[] = [
+      const newNodeDataArray = [
         { key: "source", isGroup: true, name: "source", xy: "0 0", width: 400 },
         { key: "target", isGroup: true, name: "target", xy: "650 0", width: 10 },
       ];
-      const newLinkDataArray: go.ObjectData[] = [];
+      const newLinkDataArray = [];
       makeTree({
         sourceTreeData: longTarget.sourceTreeData,
         nodeDataArray: newNodeDataArray,
