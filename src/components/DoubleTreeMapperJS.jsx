@@ -6,7 +6,7 @@ import longTarget from "../data/target_long.json";
 import { makeTree } from "../makeTree";
 
 // Constant
-let ROUTINGSTYLE = "Normal";
+let ROUTINGSTYLE = "ToNode";
 
 // Class
 class TreeNode extends go.Node {
@@ -389,6 +389,8 @@ const initDiagram = () => {
       if (!(part instanceof go.Group)) return;
       updateScrollbars(part);
     },
+    // 첫 랜더링시 범위 밖에 있는 요소들도 선택될 수 있게끔 하는 옵션
+    PartResized: (e) => updateGroupInteraction(e.subject.part),
     // support mouse scrolling of subgraphs
     scroll: function (unit, dir, dist) {
       // override Diagram.scroll
@@ -407,8 +409,15 @@ const initDiagram = () => {
     },
     "commandHandler.copiesTree": true,
     "commandHandler.deletesTree": true,
-    TreeCollapsed: handleTreeCollapseExpand,
-    TreeExpanded: handleTreeCollapseExpand,
+    TreeCollapsed: (e) => {
+      console.log(e);
+      handleTreeCollapseExpand(e);
+      // updateGroupInteraction(e.subject.part);
+    },
+    TreeExpanded: (e) => {
+      handleTreeCollapseExpand(e);
+      // updateGroupInteraction(e.subject.part);
+    },
     // newly drawn links always map a node in one tree to a node in another tree
     "linkingTool.archetypeLinkData": { category: "Mapping" },
     "linkingTool.linkValidation": checkLink,
@@ -426,6 +435,7 @@ const initDiagram = () => {
     var view = sized.getDocumentBounds();
     var dx = 0;
     var dy = 0;
+    // 스크롤 속도 조절
     switch (unit) {
       case "pixel":
         switch (dir) {
@@ -853,7 +863,7 @@ const defaultLinkDataArray = [
 ];
 const DoubleTreeMapper = () => {
   const [sourceDataArray, setSourceDataArray] = useState([
-    { key: "source", isGroup: true, name: "source", xy: "0 0", size: "400 1000" },
+    { key: "source", isGroup: true, name: "source", xy: "0 0", size: "400 600" },
     { key: "source_0", name: "Employee", type: "copy", group: "source" },
     { key: "source_1", name: "id", type: "string", group: "source" },
     { key: "source_2", name: "name", type: "string", group: "source" },
@@ -876,7 +886,7 @@ const DoubleTreeMapper = () => {
     { key: "source_19", name: "hobby", group: "source" },
   ]);
   const [targetDataArray, setTargetDataArray] = useState([
-    { key: "target", isGroup: true, name: "target", xy: "650 0", size: "400 300" },
+    { key: "target", isGroup: true, name: "target", xy: "650 0", size: "400 600" },
     { key: "target_0", name: "Employee", group: "target" },
     { key: "target_1", name: "id", group: "target" },
     { key: "target_2", name: "name", group: "target" },
@@ -912,7 +922,13 @@ const DoubleTreeMapper = () => {
       name: `newNode${newNodeKey + 1}`,
       group: "target",
     };
+    const newLink = {
+      key: `link_${linkDataArray.length}`,
+      from: `target_0`,
+      to: `target_${newNodeKey + 1}`,
+    };
     setTargetDataArray([...targetDataArray, newNode]);
+    setLinkDataArray([...linkDataArray, newLink]);
   };
   const handleClickAddSource = () => {
     const newNodeKey = parseInt(sourceDataArray[sourceDataArray.length - 1].key.split("_")[1]);
@@ -921,7 +937,13 @@ const DoubleTreeMapper = () => {
       name: `newNode${newNodeKey + 1}`,
       group: "source",
     };
+    const newLink = {
+      key: `link_${linkDataArray.length}`,
+      from: `source_0`,
+      to: `source_${newNodeKey + 1}`,
+    };
     setSourceDataArray([...sourceDataArray, newNode]);
+    setLinkDataArray([...linkDataArray, newLink]);
   };
 
   const handleClickAddLink = () => {
@@ -979,12 +1001,15 @@ const DoubleTreeMapper = () => {
         linkDataArray={linkDataArray}
         onModelChange={onModelChange}
       />
-
-      <button onClick={handleClickAddSource}>source 추가</button>
-      <button onClick={handleClickAddTarget}>target 추가</button>
-      <button onClick={handleClickAddLink}>random link 추가</button>
+      {isChanged || (
+        <>
+          <button onClick={handleClickAddSource}>Add Source Node</button>
+          <button onClick={handleClickAddTarget}>Add Target Node</button>
+          <button onClick={handleClickAddLink}>Add Random Link</button>
+        </>
+      )}
       <button onClick={handleClickChangeData}>
-        {!isChanged ? "새로운 데이터로 교체" : "원래로 복구"}
+        {!isChanged ? "Change to New Data" : "Change to Original Data"}
       </button>
     </>
   );
