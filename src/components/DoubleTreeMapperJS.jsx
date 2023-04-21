@@ -6,7 +6,7 @@ import longTarget from "../data/target_long.json";
 import { makeTree } from "../makeTree";
 
 // Constant
-let ROUTINGSTYLE = "ToNode";
+let ROUTINGSTYLE = "Normal";
 
 // Class
 class TreeNode extends go.Node {
@@ -71,7 +71,13 @@ function handleTreeCollapseExpand(e) {
     n.findExternalTreeLinksConnected().each((l) => l.invalidateRoute());
   });
 }
+const getRandomInt = (min, max) => {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min)) + min; //최댓값은 제외, 최솟값은 포함
+};
 
+// Init
 const initDiagram = () => {
   const $ = go.GraphObject.make;
   go.GraphObject.defineBuilder("AutoRepeatButton", function (args) {
@@ -412,17 +418,20 @@ const initDiagram = () => {
     TreeCollapsed: (e) => {
       console.log(e);
       handleTreeCollapseExpand(e);
-      // updateGroupInteraction(e.subject.part);
+      updateGroupInteraction(e.subject.part);
     },
     TreeExpanded: (e) => {
       handleTreeCollapseExpand(e);
-      // updateGroupInteraction(e.subject.part);
+      updateGroupInteraction(e.subject.part);
     },
     // newly drawn links always map a node in one tree to a node in another tree
     "linkingTool.archetypeLinkData": { category: "Mapping" },
     "linkingTool.linkValidation": checkLink,
     "relinkingTool.linkValidation": checkLink,
     "undoManager.isEnabled": true,
+
+    allowVerticalScroll: false,
+    allowHorizontalScroll: false,
   });
   function scrollGroup(grp, unit, dir, dist) {
     if (grp instanceof go.GraphObject) grp = grp.part;
@@ -440,16 +449,16 @@ const initDiagram = () => {
       case "pixel":
         switch (dir) {
           case "up":
-            dy = -10;
+            dy = -100;
             break;
           case "down":
-            dy = 10;
+            dy = 100;
             break;
           case "left":
-            dx = -10;
+            dx = -100;
             break;
           case "right":
-            dx = 10;
+            dx = 100;
             break;
           default:
             break;
@@ -458,16 +467,16 @@ const initDiagram = () => {
       case "line":
         switch (dir) {
           case "up":
-            dy = -20;
+            dy = -200;
             break;
           case "down":
-            dy = 20;
+            dy = 200;
             break;
           case "left":
-            dx = -20;
+            dx = -200;
             break;
           case "right":
-            dx = 20;
+            dx = 200;
             break;
           default:
             break;
@@ -655,9 +664,10 @@ const initDiagram = () => {
     {
       selectionObjectName: "SIZED",
       locationObjectName: "SIZED",
-      resizable: true,
+      resizable: false,
       resizeObjectName: "SIZED",
-      movable: true,
+      movable: false,
+
       layout: $(
         GroupTreeLayout, // taken from samples/treeView.html
         {
@@ -816,11 +826,8 @@ const initDiagram = () => {
 
   return diagram;
 };
-const getRandomInt = (min, max) => {
-  min = Math.ceil(min);
-  max = Math.floor(max);
-  return Math.floor(Math.random() * (max - min)) + min; //최댓값은 제외, 최솟값은 포함
-};
+
+// Data
 const defaultLinkDataArray = [
   { key: "link_0", from: "source_0", to: "source_1" },
   { key: "link_1", from: "source_0", to: "source_2" },
@@ -861,9 +868,11 @@ const defaultLinkDataArray = [
   { key: "link_36", from: "target_16", to: "target_18" },
   { key: "link_37", from: "target_15", to: "target_19" },
 ];
+
+// Main Component
 const DoubleTreeMapper = () => {
   const [sourceDataArray, setSourceDataArray] = useState([
-    { key: "source", isGroup: true, name: "source", xy: "0 0", size: "400 600" },
+    { key: "source", isGroup: true, name: "source", xy: "0 0", size: "600 700" },
     { key: "source_0", name: "Employee", type: "copy", group: "source" },
     { key: "source_1", name: "id", type: "string", group: "source" },
     { key: "source_2", name: "name", type: "string", group: "source" },
@@ -886,7 +895,7 @@ const DoubleTreeMapper = () => {
     { key: "source_19", name: "hobby", group: "source" },
   ]);
   const [targetDataArray, setTargetDataArray] = useState([
-    { key: "target", isGroup: true, name: "target", xy: "650 0", size: "400 600" },
+    { key: "target", isGroup: true, name: "target", xy: "650 0", size: "600 700" },
     { key: "target_0", name: "Employee", group: "target" },
     { key: "target_1", name: "id", group: "target" },
     { key: "target_2", name: "name", group: "target" },
@@ -915,6 +924,7 @@ const DoubleTreeMapper = () => {
     console.log(event);
   };
 
+  // Button Hanlde Function
   const handleClickAddTarget = () => {
     const newNodeKey = parseInt(targetDataArray[targetDataArray.length - 1].key.split("_")[1]);
     const newNode = {
@@ -945,7 +955,6 @@ const DoubleTreeMapper = () => {
     setSourceDataArray([...sourceDataArray, newNode]);
     setLinkDataArray([...linkDataArray, newLink]);
   };
-
   const handleClickAddLink = () => {
     const sourceRandomNum = getRandomInt(1, sourceDataArray.length);
     const targetRandomNum = getRandomInt(1, targetDataArray.length);
@@ -989,6 +998,8 @@ const DoubleTreeMapper = () => {
       // setLinkDataArray([]);
     }
   };
+
+  // useEffect
   useEffect(() => {
     setNodeDataArray([...sourceDataArray, ...targetDataArray]);
   }, [sourceDataArray, targetDataArray]);
