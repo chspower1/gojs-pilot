@@ -662,10 +662,11 @@ const initDiagram = () => {
     go.Group,
     "Table",
     {
-      selectionObjectName: "SIZED",
-      locationObjectName: "SIZED",
+      selectable: false,
+      // selectionObjectName: "SIZED",
+      // locationObjectName: "SIZED",
       resizable: false,
-      resizeObjectName: "SIZED",
+      // resizeObjectName: "SIZED",
       movable: false,
 
       layout: $(
@@ -695,7 +696,7 @@ const initDiagram = () => {
         minSize: new go.Size(100, 100),
         fill: null,
         stroke: "gray",
-        strokeWidth: 5, // must be null so that the member Parts can be clicked
+        strokeWidth: null, // must be null so that the member Parts can be clicked
       },
       new go.Binding("desiredSize", "size", go.Size.parse).makeTwoWay(go.Size.stringify)
     ),
