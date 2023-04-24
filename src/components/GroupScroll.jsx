@@ -19,7 +19,7 @@ const init = () => {
     var delay = go.GraphObject.takeBuilderArgument(args, 500, function (x) {
       return typeof x === "number";
     });
-
+    var $ = go.GraphObject.make;
     // some internal helper functions for auto-repeating
     function delayClicking(e, obj) {
       endClicking(e, obj);
@@ -76,6 +76,7 @@ const init = () => {
   });
 
   go.GraphObject.defineBuilder("ScrollingTable", function (args) {
+    var $ = go.GraphObject.make;
     var tablename = go.GraphObject.takeBuilderArgument(args, "TABLE");
 
     // an internal helper function used by the THUMB for scrolling to a Y-axis point in local coordinates
@@ -255,7 +256,7 @@ const init = () => {
           {
             name: "UP",
             row: 0,
-            opacity: 100,
+            opacity: 0,
             click: function (e, obj) {
               e.handled = true;
               incrTableIndex(obj, -1);
@@ -322,15 +323,20 @@ const init = () => {
     go.Diagram,
     // create a Diagram for the DIV HTML element
     {
-      // scrollMode: go.Diagram.InfiniteScroll,
       InitialLayoutCompleted: (e) => e.diagram.nodes.each(updateGroupInteraction),
+      TreeExpanded: (e) => setTimeout(() => updateGroupInteraction(e.subject.first()), 1000),
+      TreeCollapsed: (e) => setTimeout(() => updateGroupInteraction(e.subject.first()), 1000),
       "resizingTool.dragsMembers": false,
       "resizingTool.updateAdornments": function (part) {
         // method override
         go.ResizingTool.prototype.updateAdornments.call(this, part);
-        if (!(part instanceof go.Group)) return;
-        updateScrollbars(part);
+        const ad = part.findAdornment("Selection");
+        if (ad) {
+          ad.ensureBounds();
+          updateScrollbars(part);
+        }
       },
+      PartResized: (e) => updateGroupInteraction(e.subject.part),
       // support mouse scrolling of subgraphs
       scroll: function (unit, dir, dist) {
         // override Diagram.scroll
@@ -347,15 +353,12 @@ const init = () => {
         // otherwise, scroll the viewport normally
         go.Diagram.prototype.scroll.call(this, unit, dir, dist);
       },
-      model: new go.GraphLinksModel({
-        linkKeyProperty: "key", // IMPORTANT! must be defined for merges and data sync when using GraphLinksModel
-      }),
     }
   );
 
   function scrollGroup(grp, unit, dir, dist) {
-    console.log("scrollGroup");
     if (grp instanceof go.GraphObject) grp = grp.part;
+    if (grp instanceof go.Adornment) grp = grp.adornedPart;
     if (!(grp instanceof go.Group)) return;
     var diag = grp.diagram;
     if (!diag) return;
@@ -369,53 +372,52 @@ const init = () => {
       case "pixel":
         switch (dir) {
           case "up":
-            dy = -10;
-            break;
-          case "down":
             dy = 10;
             break;
+          case "down":
+            dy = -10;
+            break;
           case "left":
-            dx = -10;
+            dx = 10;
             break;
           case "right":
-            dx = 10;
+            dx = -10;
             break;
         }
         break;
       case "line":
         switch (dir) {
           case "up":
-            dy = -20;
+            dy = 30;
             break;
           case "down":
-            dy = 20;
+            dy = -30;
             break;
           case "left":
-            dx = -20;
+            dx = 30;
             break;
           case "right":
-            dx = 20;
+            dx = -30;
             break;
         }
         break;
       case "page":
         switch (dir) {
           case "up":
-            dy = Math.min(-10, -sized.actualBounds.height + 10);
+            dy = Math.min(10, -sized.actualBounds.height - 10);
             break;
           case "down":
-            dy = Math.max(10, sized.actualBounds.height - 10);
+            dy = Math.max(-10, sized.actualBounds.height + 10);
             break;
           case "left":
-            dx = Math.min(-10, -sized.actualBounds.width + 10);
+            dx = Math.min(10, -sized.actualBounds.width - 10);
             break;
           case "right":
-            dx = Math.max(10, sized.actualBounds.width - 10);
+            dx = Math.max(-10, sized.actualBounds.width + 10);
             break;
         }
         break;
     }
-    console.log("dy", dy, "dx", dx);
     if (dx > 0) dx = Math.min(dx, view.left + 4 - bnds.left); // top-left margin
     else if (dx < 0 && view.right - 2 > bnds.right) dx = 0;
     if (dy > 0) dy = Math.min(dy, view.top + 4 - bnds.top); // top-left margin
@@ -430,6 +432,7 @@ const init = () => {
   }
   function updateGroupInteraction(grp, viewb) {
     if (grp instanceof go.GraphObject) grp = grp.part;
+    if (!(grp instanceof go.Group)) grp = grp.containingGroup;
     if (!(grp instanceof go.Group)) return;
     if (viewb === undefined) {
       var sized = grp.findObject("SIZED");
@@ -437,22 +440,26 @@ const init = () => {
       viewb = sized.getDocumentBounds();
     }
     grp.memberParts.each((part) => {
-      part.pickable =
-        part.selectable =
-        part.isInDocumentBounds =
-        part.selectionAdorned =
-          viewb.intersectsRect(part.actualBounds);
+      if (part instanceof go.Node && part.isVisible()) {
+        part.pickable =
+          part.selectable =
+          part.isInDocumentBounds =
+          part.selectionAdorned =
+            viewb.intersectsRect(part.actualBounds);
+      }
     });
     updateScrollbars(grp, viewb);
   }
   function updateScrollbars(grp, viewb) {
+    const selad = grp.findAdornment("Selection");
+    if (!selad) return;
     if (viewb === undefined) {
       var sized = grp.findObject("SIZED");
       if (!sized) return;
       viewb = sized.getDocumentBounds();
     }
-    const panel = grp;
-    const memb = grp.diagram.computePartsBounds(grp.memberParts);
+    const panel = selad;
+    const memb = grp.diagram.computePartsBounds(grp.memberParts); //??? ought to skip some but not all invisible parts
     memb.union(memb.x, memb.y, 1, 1); // avoid zero width or height
     const HTHUMB = panel.findObject("HTHUMB");
     const LEFT = panel.findObject("LEFT");
@@ -468,36 +475,45 @@ const init = () => {
     const ty = Math.max(0, viewb.height - TOP.actualBounds.height - BOTTOM.actualBounds.height);
     HTHUMB.visible = fw < 1 || viewb.x > memb.x || viewb.right < memb.right;
     if (HTHUMB.visible) {
+      HTHUMB.width = Math.max(Math.min(10, tx / 2), fw * tx);
       HTHUMB.alignment = new go.Spot(0, 0.5, LEFT.actualBounds.width + fx * tx, 0);
-      HTHUMB.width = fw * tx;
     }
     VTHUMB.visible = fh < 1 || viewb.y > memb.y || viewb.bottom < memb.bottom;
     if (VTHUMB.visible) {
+      VTHUMB.height = Math.max(Math.min(10, ty / 2), fh * ty);
       VTHUMB.alignment = new go.Spot(0.5, 0, 0, TOP.actualBounds.height + fy * ty);
-      VTHUMB.height = fh * ty;
     }
   }
   myDiagram.nodeTemplate = $(
     go.Node,
-    go.Panel.Auto,
+    "Horizontal",
     new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
-    $(go.Shape, { fill: "lightgray" }, new go.Binding("fill", "color")),
-    $(go.TextBlock, { margin: 4 }, new go.Binding("text"))
+    $("TreeExpanderButton"),
+    $(
+      go.Panel,
+      "Auto",
+      $(go.Shape, { fill: "lightgray" }, new go.Binding("fill", "color")),
+      $(go.TextBlock, { margin: 4 }, new go.Binding("text"))
+    )
   );
   myDiagram.linkTemplate = $(
     go.Link,
     {
+      isInDocumentBounds: false,
       selectable: false,
+      pickable: false,
       routing: go.Link.Orthogonal,
-      fromSpot: new go.Spot(0.25, 1),
+      fromEndSegmentLength: 4,
+      toEndSegmentLength: 4,
+      fromSpot: new go.Spot(0.001, 1, 7, 0),
       toSpot: go.Spot.Left,
     },
-    $(go.Shape)
+    $(go.Shape, { stroke: "gray" })
   );
 
   myDiagram.groupTemplate = $(
     go.Group,
-    "Table",
+    "Vertical",
     {
       selectionObjectName: "SIZED",
       locationObjectName: "SIZED",
@@ -505,36 +521,38 @@ const init = () => {
       resizeObjectName: "SIZED",
       layout: $(GroupTreeLayout, {
         alignment: go.TreeLayout.AlignmentStart,
-        nodeIndent: 2,
-        nodeIndentPastParent: 1,
-        nodeSpacing: 2,
-        layerSpacing: 10,
-        layerSpacingParentOverlap: 0.75,
+        angle: 0,
+        compaction: go.TreeLayout.CompactionNone,
+        layerSpacing: 25,
+        layerSpacingParentOverlap: 1.0,
+        nodeIndent: 5,
+        nodeIndentPastParent: 1.0,
+        nodeSpacing: 5,
         setsPortSpot: false,
         setsChildPortSpot: false,
       }),
       isClipping: true,
-      layerName: "Foreground", // so that clicking in the scrollbar won't click on a member node that extends beyond the group
     },
     new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
+    $(go.TextBlock, { font: "bold 14pt sans-serif" }, new go.Binding("text")),
     $(
       go.Shape,
       {
         name: "SIZED",
         row: 1,
         column: 1,
-        minSize: new go.Size(20, 20),
-        fill: null,
+        minSize: new go.Size(30, 30),
+        fill: "transparent",
         stroke: "blue",
-        strokeWidth: 2, // must be null so that the member Parts can be clicked
+        strokeWidth: 2,
       },
       new go.Binding("desiredSize", "size", go.Size.parse).makeTwoWay(go.Size.stringify)
-    ),
-    $(
-      go.TextBlock,
-      { row: 0, column: 1, alignment: go.Spot.Left, font: "bold 14pt sans-serif" },
-      new go.Binding("text")
-    ),
+    )
+  );
+  myDiagram.groupTemplate.selectionAdornmentTemplate = $(
+    go.Adornment,
+    "Table",
+    $(go.Placeholder, { row: 1, column: 1 }),
     // the scrollbars; first the backgrounds
     $(go.Shape, {
       row: 2,
@@ -558,7 +576,8 @@ const init = () => {
       strokeWidth: 0,
       fill: "transparent",
       stretch: go.GraphObject.Fill,
-      click: (e, back) => {
+      isActionable: true,
+      actionDown: (e, back) => {
         // handle click for absolute positioning
       },
     }),
@@ -575,7 +594,7 @@ const init = () => {
       isActionable: true,
       actionMove: (e, thumb) => {
         const up = e.diagram.lastInput.documentPoint.x < e.diagram.firstInput.documentPoint.x;
-        scrollGroup(thumb.part, "pixel", up ? "right" : "left");
+        scrollGroup(thumb.part, "line", up ? "left" : "right");
       },
     }),
     $(
@@ -585,7 +604,7 @@ const init = () => {
         column: 1,
         name: "LEFT",
         alignment: go.Spot.Left,
-        click: (e, but) => scrollGroup(but.part, "pixel", "right"),
+        click: (e, but) => scrollGroup(but.part, "pixel", "left"),
       },
       $(go.Shape, "TriangleLeft", { stroke: null, desiredSize: new go.Size(6, 8) })
     ),
@@ -596,7 +615,7 @@ const init = () => {
         column: 1,
         name: "RIGHT",
         alignment: go.Spot.Right,
-        click: (e, but) => scrollGroup(but.part, "pixel", "left"),
+        click: (e, but) => scrollGroup(but.part, "pixel", "right"),
       },
       $(go.Shape, "TriangleRight", { stroke: null, desiredSize: new go.Size(6, 8) })
     ),
@@ -607,7 +626,8 @@ const init = () => {
       strokeWidth: 0,
       fill: "transparent",
       stretch: go.GraphObject.Fill,
-      click: (e, back) => {
+      isActionable: true,
+      actionDown: (e, back) => {
         // handle click for absolute positioning
       },
     }),
@@ -624,7 +644,7 @@ const init = () => {
       isActionable: true,
       actionMove: (e, thumb) => {
         const up = e.diagram.lastInput.documentPoint.y < e.diagram.firstInput.documentPoint.y;
-        scrollGroup(thumb.part, "pixel", up ? "down" : "up");
+        scrollGroup(thumb.part, "line", up ? "up" : "down");
       },
     }),
     $(
@@ -634,7 +654,7 @@ const init = () => {
         column: 2,
         name: "TOP",
         alignment: go.Spot.Top,
-        click: (e, but) => scrollGroup(but.part, "pixel", "down"),
+        click: (e, but) => scrollGroup(but.part, "pixel", "up"),
       },
       $(go.Shape, "TriangleUp", { stroke: null, desiredSize: new go.Size(8, 6) })
     ),
@@ -645,11 +665,14 @@ const init = () => {
         column: 2,
         name: "BOTTOM",
         alignment: go.Spot.Bottom,
-        click: (e, but) => scrollGroup(but.part, "pixel", "up"),
+        click: (e, but) => scrollGroup(but.part, "pixel", "down"),
       },
       $(go.Shape, "TriangleDown", { stroke: null, desiredSize: new go.Size(8, 6) })
     )
   );
+  myDiagram.model = new go.GraphLinksModel({
+    linkKeyProperty: "key",
+  });
 
   return myDiagram;
 };
