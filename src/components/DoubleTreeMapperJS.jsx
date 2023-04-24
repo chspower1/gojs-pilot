@@ -58,12 +58,14 @@ class MappingLink extends go.Link {
 class GroupTreeLayout extends go.TreeLayout {
   initialOrigin() {
     if (this.group) {
+      const b = this.diagram.computePartsBounds(this.group.memberParts);
+      if (b.isReal()) return b.position;
       var sized = this.group.findObject("SIZED");
       if (sized) return sized.getDocumentPoint(new go.Spot(0, 0, 4, 4)); // top-left margin
     }
     return this.arrangementOrigin;
   }
-}
+} // end of GroupTreeLayout
 
 // Function
 function handleTreeCollapseExpand(e) {
@@ -87,6 +89,7 @@ const initDiagram = () => {
     var delay = go.GraphObject.takeBuilderArgument(args, 500, function (x) {
       return typeof x === "number";
     });
+    var $ = go.GraphObject.make;
     // some internal helper functions for auto-repeating
     function delayClicking(e, obj) {
       endClicking(e, obj);
@@ -143,6 +146,7 @@ const initDiagram = () => {
   });
 
   go.GraphObject.defineBuilder("ScrollingTable", function (args) {
+    var $ = go.GraphObject.make;
     var tablename = go.GraphObject.takeBuilderArgument(args, "TABLE");
 
     // an internal helper function used by the THUMB for scrolling to a Y-axis point in local coordinates
@@ -392,9 +396,13 @@ const initDiagram = () => {
     "resizingTool.updateAdornments": function (part) {
       // method override
       go.ResizingTool.prototype.updateAdornments.call(this, part);
-      if (!(part instanceof go.Group)) return;
-      updateScrollbars(part);
+      const ad = part.findAdornment("Selection");
+      if (ad) {
+        ad.ensureBounds();
+        updateScrollbars(part);
+      }
     },
+
     // 첫 랜더링시 범위 밖에 있는 요소들도 선택될 수 있게끔 하는 옵션
     PartResized: (e) => updateGroupInteraction(e.subject.part),
     // support mouse scrolling of subgraphs
@@ -415,26 +423,17 @@ const initDiagram = () => {
     },
     "commandHandler.copiesTree": true,
     "commandHandler.deletesTree": true,
-    TreeCollapsed: (e) => {
-      console.log(e);
-      handleTreeCollapseExpand(e);
-      updateGroupInteraction(e.subject.part);
-    },
-    TreeExpanded: (e) => {
-      handleTreeCollapseExpand(e);
-      updateGroupInteraction(e.subject.part);
-    },
+    TreeExpanded: (e) => setTimeout(() => updateGroupInteraction(e.subject.first()), 1000),
+    TreeCollapsed: (e) => setTimeout(() => updateGroupInteraction(e.subject.first()), 1000),
     // newly drawn links always map a node in one tree to a node in another tree
     "linkingTool.archetypeLinkData": { category: "Mapping" },
     "linkingTool.linkValidation": checkLink,
     "relinkingTool.linkValidation": checkLink,
     "undoManager.isEnabled": true,
-
-    allowVerticalScroll: false,
-    allowHorizontalScroll: false,
   });
   function scrollGroup(grp, unit, dir, dist) {
     if (grp instanceof go.GraphObject) grp = grp.part;
+    if (grp instanceof go.Adornment) grp = grp.adornedPart;
     if (!(grp instanceof go.Group)) return;
     var diag = grp.diagram;
     if (!diag) return;
@@ -444,63 +443,54 @@ const initDiagram = () => {
     var view = sized.getDocumentBounds();
     var dx = 0;
     var dy = 0;
-    // 스크롤 속도 조절
     switch (unit) {
       case "pixel":
         switch (dir) {
           case "up":
-            dy = -100;
+            dy = 10;
             break;
           case "down":
-            dy = 100;
+            dy = -10;
             break;
           case "left":
-            dx = -100;
+            dx = 10;
             break;
           case "right":
-            dx = 100;
-            break;
-          default:
+            dx = -10;
             break;
         }
         break;
       case "line":
         switch (dir) {
           case "up":
-            dy = -200;
+            dy = 30;
             break;
           case "down":
-            dy = 200;
+            dy = -30;
             break;
           case "left":
-            dx = -200;
+            dx = 30;
             break;
           case "right":
-            dx = 200;
-            break;
-          default:
+            dx = -30;
             break;
         }
         break;
       case "page":
         switch (dir) {
           case "up":
-            dy = Math.min(-10, -sized.actualBounds.height + 10);
+            dy = Math.min(10, -sized.actualBounds.height - 10);
             break;
           case "down":
-            dy = Math.max(10, sized.actualBounds.height - 10);
+            dy = Math.max(-10, sized.actualBounds.height + 10);
             break;
           case "left":
-            dx = Math.min(-10, -sized.actualBounds.width + 10);
+            dx = Math.min(10, -sized.actualBounds.width - 10);
             break;
           case "right":
-            dx = Math.max(10, sized.actualBounds.width - 10);
-            break;
-          default:
+            dx = Math.max(-10, sized.actualBounds.width + 10);
             break;
         }
-        break;
-      default:
         break;
     }
     if (dx > 0) dx = Math.min(dx, view.left + 4 - bnds.left); // top-left margin
@@ -517,6 +507,7 @@ const initDiagram = () => {
   }
   function updateGroupInteraction(grp, viewb) {
     if (grp instanceof go.GraphObject) grp = grp.part;
+    if (!(grp instanceof go.Group)) grp = grp.containingGroup;
     if (!(grp instanceof go.Group)) return;
     if (viewb === undefined) {
       var sized = grp.findObject("SIZED");
@@ -524,22 +515,26 @@ const initDiagram = () => {
       viewb = sized.getDocumentBounds();
     }
     grp.memberParts.each((part) => {
-      part.pickable =
-        part.selectable =
-        part.isInDocumentBounds =
-        part.selectionAdorned =
-          viewb.intersectsRect(part.actualBounds);
+      if (part instanceof go.Node && part.isVisible()) {
+        part.pickable =
+          part.selectable =
+          part.isInDocumentBounds =
+          part.selectionAdorned =
+            viewb.intersectsRect(part.actualBounds);
+      }
     });
     updateScrollbars(grp, viewb);
   }
   function updateScrollbars(grp, viewb) {
+    const selad = grp.findAdornment("Selection");
+    if (!selad) return;
     if (viewb === undefined) {
       var sized = grp.findObject("SIZED");
       if (!sized) return;
       viewb = sized.getDocumentBounds();
     }
-    const panel = grp;
-    const memb = grp.diagram.computePartsBounds(grp.memberParts);
+    const panel = selad;
+    const memb = grp.diagram.computePartsBounds(grp.memberParts); //??? ought to skip some but not all invisible parts
     memb.union(memb.x, memb.y, 1, 1); // avoid zero width or height
     const HTHUMB = panel.findObject("HTHUMB");
     const LEFT = panel.findObject("LEFT");
@@ -555,19 +550,19 @@ const initDiagram = () => {
     const ty = Math.max(0, viewb.height - TOP.actualBounds.height - BOTTOM.actualBounds.height);
     HTHUMB.visible = fw < 1 || viewb.x > memb.x || viewb.right < memb.right;
     if (HTHUMB.visible) {
+      HTHUMB.width = Math.max(Math.min(10, tx / 2), fw * tx);
       HTHUMB.alignment = new go.Spot(0, 0.5, LEFT.actualBounds.width + fx * tx, 0);
-      HTHUMB.width = fw * tx;
     }
     VTHUMB.visible = fh < 1 || viewb.y > memb.y || viewb.bottom < memb.bottom;
     if (VTHUMB.visible) {
+      VTHUMB.height = Math.max(Math.min(10, ty / 2), fh * ty);
       VTHUMB.alignment = new go.Spot(0.5, 0, 0, TOP.actualBounds.height + fy * ty);
-      VTHUMB.height = fh * ty;
     }
   }
   // 애니메이션 제거 속성
-  diagram.animationManager.canStart = () => {
-    return false;
-  };
+  // diagram.animationManager.canStart = () => {
+  //   return false;
+  // };
 
   diagram.nodeTemplate = $(
     TreeNode,
@@ -636,14 +631,16 @@ const initDiagram = () => {
   diagram.linkTemplate = $(
     go.Link,
     {
+      isInDocumentBounds: false,
       selectable: false,
+      pickable: false,
       routing: go.Link.Orthogonal,
       fromEndSegmentLength: 4,
       toEndSegmentLength: 4,
       fromSpot: new go.Spot(0.001, 1, 7, 0),
       toSpot: go.Spot.Left,
     },
-    $(go.Shape, { stroke: "lightgray" })
+    $(go.Shape, { stroke: "gray" })
   );
 
   diagram.linkTemplateMap.add(
@@ -660,51 +657,46 @@ const initDiagram = () => {
 
   diagram.groupTemplate = $(
     go.Group,
-    "Table",
+    "Vertical",
     {
-      selectable: false,
-      // selectionObjectName: "SIZED",
-      // locationObjectName: "SIZED",
-      resizable: false,
-      // resizeObjectName: "SIZED",
-      movable: false,
-
-      layout: $(
-        GroupTreeLayout, // taken from samples/treeView.html
-        {
-          alignment: go.TreeLayout.AlignmentStart,
-          angle: 0,
-          compaction: go.TreeLayout.CompactionNone,
-          layerSpacing: 16,
-          layerSpacingParentOverlap: 0.8,
-          nodeIndentPastParent: 1.0,
-          nodeSpacing: 0,
-          setsPortSpot: false,
-          setsChildPortSpot: false,
-        }
-      ),
+      selectionObjectName: "SIZED",
+      locationObjectName: "SIZED",
+      resizable: true,
+      resizeObjectName: "SIZED",
+      layout: $(GroupTreeLayout, {
+        alignment: go.TreeLayout.AlignmentStart,
+        angle: 0,
+        compaction: go.TreeLayout.CompactionNone,
+        layerSpacing: 25,
+        layerSpacingParentOverlap: 1.0,
+        nodeIndent: 5,
+        nodeIndentPastParent: 1.0,
+        nodeSpacing: 5,
+        setsPortSpot: false,
+        setsChildPortSpot: false,
+      }),
       isClipping: true,
-      layerName: "Foreground",
     },
-    new go.Binding("position", "xy", go.Point.parse).makeTwoWay(go.Point.stringify),
+    new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
+    $(go.TextBlock, { font: "bold 14pt sans-serif" }, new go.Binding("text")),
     $(
       go.Shape,
       {
         name: "SIZED",
         row: 1,
         column: 1,
-        minSize: new go.Size(100, 100),
-        fill: null,
-        stroke: "gray",
-        strokeWidth: null, // must be null so that the member Parts can be clicked
+        minSize: new go.Size(30, 30),
+        fill: "transparent",
+        stroke: "blue",
+        strokeWidth: 2,
       },
       new go.Binding("desiredSize", "size", go.Size.parse).makeTwoWay(go.Size.stringify)
-    ),
-    $(
-      go.TextBlock,
-      { row: 0, column: 1, alignment: go.Spot.Left, font: "bold 14pt sans-serif" },
-      new go.Binding("text", "name")
-    ),
+    )
+  );
+  diagram.groupTemplate.selectionAdornmentTemplate = $(
+    go.Adornment,
+    "Table",
+    $(go.Placeholder, { row: 1, column: 1 }),
     // the scrollbars; first the backgrounds
     $(go.Shape, {
       row: 2,
@@ -728,7 +720,8 @@ const initDiagram = () => {
       strokeWidth: 0,
       fill: "transparent",
       stretch: go.GraphObject.Fill,
-      click: (e, back) => {
+      isActionable: true,
+      actionDown: (e, back) => {
         // handle click for absolute positioning
       },
     }),
@@ -745,7 +738,7 @@ const initDiagram = () => {
       isActionable: true,
       actionMove: (e, thumb) => {
         const up = e.diagram.lastInput.documentPoint.x < e.diagram.firstInput.documentPoint.x;
-        scrollGroup(thumb.part, "pixel", up ? "right" : "left");
+        scrollGroup(thumb.part, "line", up ? "left" : "right");
       },
     }),
     $(
@@ -755,7 +748,7 @@ const initDiagram = () => {
         column: 1,
         name: "LEFT",
         alignment: go.Spot.Left,
-        click: (e, but) => scrollGroup(but.part, "pixel", "right"),
+        click: (e, but) => scrollGroup(but.part, "pixel", "left"),
       },
       $(go.Shape, "TriangleLeft", { stroke: null, desiredSize: new go.Size(6, 8) })
     ),
@@ -766,7 +759,7 @@ const initDiagram = () => {
         column: 1,
         name: "RIGHT",
         alignment: go.Spot.Right,
-        click: (e, but) => scrollGroup(but.part, "pixel", "left"),
+        click: (e, but) => scrollGroup(but.part, "pixel", "right"),
       },
       $(go.Shape, "TriangleRight", { stroke: null, desiredSize: new go.Size(6, 8) })
     ),
@@ -777,7 +770,8 @@ const initDiagram = () => {
       strokeWidth: 0,
       fill: "transparent",
       stretch: go.GraphObject.Fill,
-      click: (e, back) => {
+      isActionable: true,
+      actionDown: (e, back) => {
         // handle click for absolute positioning
       },
     }),
@@ -794,7 +788,7 @@ const initDiagram = () => {
       isActionable: true,
       actionMove: (e, thumb) => {
         const up = e.diagram.lastInput.documentPoint.y < e.diagram.firstInput.documentPoint.y;
-        scrollGroup(thumb.part, "pixel", up ? "down" : "up");
+        scrollGroup(thumb.part, "line", up ? "up" : "down");
       },
     }),
     $(
@@ -804,7 +798,7 @@ const initDiagram = () => {
         column: 2,
         name: "TOP",
         alignment: go.Spot.Top,
-        click: (e, but) => scrollGroup(but.part, "pixel", "down"),
+        click: (e, but) => scrollGroup(but.part, "pixel", "up"),
       },
       $(go.Shape, "TriangleUp", { stroke: null, desiredSize: new go.Size(8, 6) })
     ),
@@ -815,12 +809,11 @@ const initDiagram = () => {
         column: 2,
         name: "BOTTOM",
         alignment: go.Spot.Bottom,
-        click: (e, but) => scrollGroup(but.part, "pixel", "up"),
+        click: (e, but) => scrollGroup(but.part, "pixel", "down"),
       },
       $(go.Shape, "TriangleDown", { stroke: null, desiredSize: new go.Size(8, 6) })
     )
   );
-
   diagram.model = new go.GraphLinksModel({
     linkKeyProperty: "key",
   });
