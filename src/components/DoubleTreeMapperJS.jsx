@@ -22,6 +22,7 @@ class TreeNode extends go.Node {
 class MappingLink extends go.Link {
   getLinkPoint(node, port, spot, from, ortho, othernode, otherport) {
     if (ROUTINGSTYLE !== "ToGroup") {
+      console.log("node", node);
       return super.getLinkPoint(node, port, spot, from, ortho, othernode, otherport);
     } else {
       var r = port.getDocumentBounds();
@@ -68,11 +69,6 @@ class GroupTreeLayout extends go.TreeLayout {
 } // end of GroupTreeLayout
 
 // Function
-function handleTreeCollapseExpand(e) {
-  e.subject.each((n) => {
-    n.findExternalTreeLinksConnected().each((l) => l.invalidateRoute());
-  });
-}
 const getRandomInt = (min, max) => {
   min = Math.ceil(min);
   max = Math.floor(max);
@@ -406,6 +402,7 @@ const initDiagram = () => {
     // 첫 랜더링시 범위 밖에 있는 요소들도 선택될 수 있게끔 하는 옵션
     PartResized: (e) => updateGroupInteraction(e.subject.part),
     // support mouse scrolling of subgraphs
+
     scroll: function (unit, dir, dist) {
       // override Diagram.scroll
       if (!dist) dist = 1;
@@ -430,6 +427,8 @@ const initDiagram = () => {
     "linkingTool.linkValidation": checkLink,
     "relinkingTool.linkValidation": checkLink,
     "undoManager.isEnabled": true,
+    // allowVerticalScroll: false,
+    // allowHorizontalScroll: false,
   });
   function scrollGroup(grp, unit, dir, dist) {
     if (grp instanceof go.GraphObject) grp = grp.part;
@@ -560,9 +559,9 @@ const initDiagram = () => {
     }
   }
   // 애니메이션 제거 속성
-  // diagram.animationManager.canStart = () => {
-  //   return false;
-  // };
+  diagram.animationManager.canStart = () => {
+    return false;
+  };
 
   diagram.nodeTemplate = $(
     TreeNode,
@@ -659,6 +658,7 @@ const initDiagram = () => {
     go.Group,
     "Vertical",
     {
+      movable: false,
       selectionObjectName: "SIZED",
       locationObjectName: "SIZED",
       resizable: true,
@@ -866,7 +866,7 @@ const defaultLinkDataArray = [
 // Main Component
 const DoubleTreeMapper = () => {
   const [sourceDataArray, setSourceDataArray] = useState([
-    { key: "source", isGroup: true, name: "source", xy: "0 0", size: "600 700" },
+    { key: "source", isGroup: true, name: "source", xy: "0 0", size: "600 1000" },
     { key: "source_0", name: "Employee", type: "copy", group: "source" },
     { key: "source_1", name: "id", type: "string", group: "source" },
     { key: "source_2", name: "name", type: "string", group: "source" },
@@ -889,7 +889,7 @@ const DoubleTreeMapper = () => {
     { key: "source_19", name: "hobby", group: "source" },
   ]);
   const [targetDataArray, setTargetDataArray] = useState([
-    { key: "target", isGroup: true, name: "target", xy: "650 0", size: "600 700" },
+    { key: "target", isGroup: true, name: "target", xy: "650 0", size: "600 1000" },
     { key: "target_0", name: "Employee", group: "target" },
     { key: "target_1", name: "id", group: "target" },
     { key: "target_2", name: "name", group: "target" },
@@ -997,6 +997,9 @@ const DoubleTreeMapper = () => {
   useEffect(() => {
     setNodeDataArray([...sourceDataArray, ...targetDataArray]);
   }, [sourceDataArray, targetDataArray]);
+  useEffect(() => {
+    // handleClickChangeData();
+  }, []);
   return (
     <>
       <ReactDiagram
