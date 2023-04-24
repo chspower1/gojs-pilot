@@ -411,6 +411,7 @@ const initDiagram = () => {
         var grp = it.value;
         if (grp instanceof go.Group) {
           // if the mouse is in a Group, scroll it
+          console.log("unit", unit, dir, dist);
           scrollGroup(grp, unit, dir, dist);
           return;
         }
@@ -446,32 +447,32 @@ const initDiagram = () => {
       case "pixel":
         switch (dir) {
           case "up":
-            dy = 10;
+            dy = dist;
             break;
           case "down":
-            dy = -10;
+            dy = -dist;
             break;
           case "left":
-            dx = 10;
+            dx = dist;
             break;
           case "right":
-            dx = -10;
+            dx = -dist;
             break;
         }
         break;
       case "line":
         switch (dir) {
           case "up":
-            dy = 30;
+            dy = dist;
             break;
           case "down":
-            dy = -30;
+            dy = -dist;
             break;
           case "left":
-            dx = 30;
+            dx = dist;
             break;
           case "right":
-            dx = -30;
+            dx = -dist;
             break;
         }
         break;
@@ -490,6 +491,8 @@ const initDiagram = () => {
             dx = Math.max(-10, sized.actualBounds.width + 10);
             break;
         }
+        break;
+      default:
         break;
     }
     if (dx > 0) dx = Math.min(dx, view.left + 4 - bnds.left); // top-left margin
@@ -738,7 +741,7 @@ const initDiagram = () => {
       isActionable: true,
       actionMove: (e, thumb) => {
         const up = e.diagram.lastInput.documentPoint.x < e.diagram.firstInput.documentPoint.x;
-        scrollGroup(thumb.part, "line", up ? "left" : "right");
+        scrollGroup(thumb.part, "line", up ? "left" : "right", 100);
       },
     }),
     $(
@@ -748,7 +751,7 @@ const initDiagram = () => {
         column: 1,
         name: "LEFT",
         alignment: go.Spot.Left,
-        click: (e, but) => scrollGroup(but.part, "pixel", "left"),
+        click: (e, but) => scrollGroup(but.part, "pixel", "left", 100),
       },
       $(go.Shape, "TriangleLeft", { stroke: null, desiredSize: new go.Size(6, 8) })
     ),
@@ -759,7 +762,7 @@ const initDiagram = () => {
         column: 1,
         name: "RIGHT",
         alignment: go.Spot.Right,
-        click: (e, but) => scrollGroup(but.part, "pixel", "right"),
+        click: (e, but) => scrollGroup(but.part, "pixel", "right", 100),
       },
       $(go.Shape, "TriangleRight", { stroke: null, desiredSize: new go.Size(6, 8) })
     ),
@@ -788,7 +791,8 @@ const initDiagram = () => {
       isActionable: true,
       actionMove: (e, thumb) => {
         const up = e.diagram.lastInput.documentPoint.y < e.diagram.firstInput.documentPoint.y;
-        scrollGroup(thumb.part, "line", up ? "up" : "down");
+        console.log("스크롤바", e.diagram.lastInput.documentPoint.y);
+        scrollGroup(thumb.part, "line", up ? "up" : "down", e.diagram.lastInput.documentPoint.y);
       },
     }),
     $(
@@ -798,7 +802,7 @@ const initDiagram = () => {
         column: 2,
         name: "TOP",
         alignment: go.Spot.Top,
-        click: (e, but) => scrollGroup(but.part, "pixel", "up"),
+        click: (e, but) => scrollGroup(but.part, "pixel", "up", 100),
       },
       $(go.Shape, "TriangleUp", { stroke: null, desiredSize: new go.Size(8, 6) })
     ),
@@ -809,7 +813,7 @@ const initDiagram = () => {
         column: 2,
         name: "BOTTOM",
         alignment: go.Spot.Bottom,
-        click: (e, but) => scrollGroup(but.part, "pixel", "down"),
+        click: (e, but) => scrollGroup(but.part, "pixel", "down", 100),
       },
       $(go.Shape, "TriangleDown", { stroke: null, desiredSize: new go.Size(8, 6) })
     )
@@ -866,7 +870,7 @@ const defaultLinkDataArray = [
 // Main Component
 const DoubleTreeMapper = () => {
   const [sourceDataArray, setSourceDataArray] = useState([
-    { key: "source", isGroup: true, name: "source", xy: "0 0", size: "600 1000" },
+    { key: "source", isGroup: true, name: "source", xy: "0 0", size: "600 500" },
     { key: "source_0", name: "Employee", type: "copy", group: "source" },
     { key: "source_1", name: "id", type: "string", group: "source" },
     { key: "source_2", name: "name", type: "string", group: "source" },
@@ -889,7 +893,7 @@ const DoubleTreeMapper = () => {
     { key: "source_19", name: "hobby", group: "source" },
   ]);
   const [targetDataArray, setTargetDataArray] = useState([
-    { key: "target", isGroup: true, name: "target", xy: "650 0", size: "600 1000" },
+    { key: "target", isGroup: true, name: "target", xy: "650 0", size: "600 500" },
     { key: "target_0", name: "Employee", group: "target" },
     { key: "target_1", name: "id", group: "target" },
     { key: "target_2", name: "name", group: "target" },
