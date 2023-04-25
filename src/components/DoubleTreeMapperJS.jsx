@@ -22,25 +22,25 @@ class TreeNode extends go.Node {
 class MappingLink extends go.Link {
   getLinkPoint(node, port, spot, from, ortho, othernode, otherport) {
     if (ROUTINGSTYLE !== "ToGroup") {
-      console.log("node", node.position.y);
+      // console.log("node", node.position.y);
       // console.log("spot", spot);
       // console.log("port", port);
-      console.log("from", from);
+      // console.log("from", from);
       // console.log("ortho", ortho);
-      console.log("othernode", othernode.position.y);
+      // console.log("othernode", othernode.position.y);
       // console.log("otherport", otherport);
 
       // return super.getLinkPoint(node, port, spot, from, ortho, othernode, otherport);
-      console.log(
-        "------",
-        super.getLinkPoint(node, port, spot, from, ortho, othernode, otherport)
-      );
+      // console.log(
+      //   "------",
+      //   super.getLinkPoint(node, port, spot, from, ortho, othernode, otherport)
+      // );
       if (from) {
-        if (node.position.y > 800) return new go.Point(600, 800);
-        else if (node.position.y < 0) return new go.Point(600, 0);
+        if (node.position.y > 600) return new go.Point(400, 600);
+        else if (node.position.y < 0) return new go.Point(400, 0);
         // else return super.getLinkPoint(node, port, spot, from, ortho, othernode, otherport);
       } else {
-        if (node.position.y > 800) return new go.Point(650, 800);
+        if (node.position.y > 600) return new go.Point(650, 600);
         else if (node.position.y < 0) return new go.Point(650, 0);
         // else return super.getLinkPoint(node, port, spot, from, ortho, othernode, otherport);
       }
@@ -60,7 +60,7 @@ class MappingLink extends go.Link {
     if (result && ROUTINGSTYLE === "ToNode") {
       var fn = this.fromNode;
       var tn = this.toNode;
-      console.log("computing", fn.actualBounds, tn);
+      // console.log("computing", fn.actualBounds, tn);
       if (fn && tn) {
         var fg = fn.containingGroup;
         var fb = fg ? fg.actualBounds : fn.actualBounds;
@@ -436,7 +436,7 @@ const initDiagram = () => {
         var grp = it.value;
         if (grp instanceof go.Group) {
           // if the mouse is in a Group, scroll it
-          console.log("unit", unit, dir, dist);
+          // console.log("unit", unit, dir, dist);
           scrollGroup(grp, unit, dir, dist);
           return;
         }
@@ -655,7 +655,6 @@ const initDiagram = () => {
       click: (e, node) => {
         console.log(node.findBindingPanel()?.data);
       },
-      // mouseLeave: (e, node) => (node.background = "white"),
     },
     new go.Binding("background", "isSelected", (s) => (s ? "#d3ebf5" : "white")).ofObject(),
     new go.Binding("fromLinkable", "group", (k) => k === "source"),
@@ -754,7 +753,7 @@ const initDiagram = () => {
       }),
       isClipping: true,
     },
-    new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
+    new go.Binding("location", "xy", go.Point.parse).makeTwoWay(go.Point.stringify),
     // $(go.TextBlock, { font: "bold 14pt sans-serif" }, new go.Binding("text")),
     $(
       go.Shape,
@@ -941,7 +940,7 @@ const defaultLinkDataArray = [
 // Main Component
 const DoubleTreeMapper = () => {
   const [sourceDataArray, setSourceDataArray] = useState([
-    { key: "source", isGroup: true, name: "source", xy: "0 0", size: "600 800" },
+    { key: "source", isGroup: true, name: "source", xy: "0 0", size: "400 600" },
     { key: "source_0", name: "Employee", type: "copy", group: "source" },
     { key: "source_1", name: "id", type: "string", group: "source" },
     { key: "source_2", name: "name", type: "string", group: "source" },
@@ -964,7 +963,7 @@ const DoubleTreeMapper = () => {
     { key: "source_19", name: "hobby", group: "source" },
   ]);
   const [targetDataArray, setTargetDataArray] = useState([
-    { key: "target", isGroup: true, name: "target", xy: "650 0", size: "600 800" },
+    { key: "target", isGroup: true, name: "target", xy: "650 0", size: "400 600" },
     { key: "target_0", name: "Employee", group: "target" },
     { key: "target_1", name: "id", group: "target" },
     { key: "target_2", name: "name", group: "target" },
@@ -1060,8 +1059,8 @@ const DoubleTreeMapper = () => {
         groupKey: "target",
       });
 
-      console.log(newNodeDataArray);
-      console.log(newLinkDataArray);
+      // console.log(newNodeDataArray);
+      // console.log(newLinkDataArray);
       setNodeDataArray(newNodeDataArray);
       setLinkDataArray(newLinkDataArray);
       // setLinkDataArray([]);
