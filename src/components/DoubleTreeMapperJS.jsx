@@ -7,7 +7,7 @@ import { makeTree } from "../makeTree";
 
 // Constant
 let ROUTINGSTYLE = "Normal";
-
+const PlaceholderMargin = new go.Margin(4);
 // Class
 class TreeNode extends go.Node {
   findVisibleNode() {
@@ -61,8 +61,11 @@ class GroupTreeLayout extends go.TreeLayout {
     if (this.group) {
       const b = this.diagram.computePartsBounds(this.group.memberParts);
       if (b.isReal()) return b.position;
-      var sized = this.group.findObject("SIZED");
-      if (sized) return sized.getDocumentPoint(new go.Spot(0, 0, 4, 4)); // top-left margin
+      let sized = this.group.findObject("SIZED");
+      if (!sized) sized = this.group;
+      return sized.getDocumentPoint(
+        new go.Spot(0, 0, PlaceholderMargin.left, PlaceholderMargin.top)
+      );
     }
     return this.arrangementOrigin;
   }
@@ -440,7 +443,7 @@ const initDiagram = () => {
     var sized = grp.findObject("SIZED");
     if (!sized) sized = grp;
     var bnds = diag.computePartsBounds(grp.memberParts);
-    var view = sized.getDocumentBounds();
+    const view = sized.getDocumentBounds().subtractMargin(PlaceholderMargin);
     var dx = 0;
     var dy = 0;
     switch (unit) {
@@ -495,10 +498,11 @@ const initDiagram = () => {
       default:
         break;
     }
-    if (dx > 0) dx = Math.min(dx, view.left + 4 - bnds.left); // top-left margin
-    else if (dx < 0 && view.right - 2 > bnds.right) dx = 0;
-    if (dy > 0) dy = Math.min(dy, view.top + 4 - bnds.top); // top-left margin
-    else if (dy < 0 && view.bottom - 2 > bnds.bottom) dy = 0;
+    if (dx > 0)
+      dx = Math.min(dx, view.left + PlaceholderMargin.left - bnds.left); // top-left margin
+    else if (dx < 0 && view.right > bnds.right) dx = 0;
+    if (dy > 0) dy = Math.min(dy, view.top + PlaceholderMargin.top - bnds.top); // top-left margin
+    else if (dy < 0 && view.bottom > bnds.bottom) dy = 0;
     const off = new go.Point(dx, dy);
     if (dx !== 0 || dy !== 0) {
       diag.commit((diag) => {
@@ -507,14 +511,56 @@ const initDiagram = () => {
       });
     }
   }
+  function scrollAt(vertical, grp, pt) {
+    // PT in document coordinates
+    if (grp instanceof go.GraphObject) grp = grp.part;
+    if (grp instanceof go.Adornment) grp = grp.adornedPart;
+    if (!(grp instanceof go.Group)) return;
+    const diagram = grp.diagram;
+    let sized = grp.findObject("SIZED");
+    if (!sized) sized = grp;
+    const panel = grp.findAdornment("Selection");
+    if (!panel) return;
+    const viewb = sized.getDocumentBounds().subtractMargin(PlaceholderMargin);
+    const memb = diagram.computePartsBounds(grp.memberParts); //??? ought to skip some but not all invisible parts
+    const p = pt.copy();
+    let off = null;
+    if (vertical) {
+      const VTHUMB = panel.findObject("VTHUMB");
+      const TOP = panel.findObject("TOP");
+      const BOTTOM = panel.findObject("BOTTOM");
+      const ptop = TOP.getDocumentPoint(go.Spot.Bottom);
+      const pbot = BOTTOM.getDocumentPoint(go.Spot.Top);
+      p.projectOntoLineSegmentPoint(ptop, pbot);
+      const dist = Math.sqrt(p.distanceSquaredPoint(ptop));
+      const ty = Math.max(1, viewb.height - TOP.actualBounds.height - BOTTOM.actualBounds.height);
+      const fy = Math.max(0, Math.min(1 - VTHUMB.actualBounds.height / ty, dist / ty));
+      off = new go.Point(0, viewb.y - memb.height * fy - memb.y);
+    } else {
+      const HTHUMB = panel.findObject("HTHUMB");
+      const LEFT = panel.findObject("LEFT");
+      const RIGHT = panel.findObject("RIGHT");
+      const ptop = LEFT.getDocumentPoint(go.Spot.Right);
+      const pbot = RIGHT.getDocumentPoint(go.Spot.Left);
+      p.projectOntoLineSegmentPoint(ptop, pbot);
+      const dist = Math.sqrt(p.distanceSquaredPoint(ptop));
+      const tx = Math.max(1, viewb.width - LEFT.actualBounds.width - RIGHT.actualBounds.width);
+      const fx = Math.max(0, Math.min(1 - HTHUMB.actualBounds.width / tx, dist / tx));
+      off = new go.Point(viewb.x - memb.width * fx - memb.x, 0);
+    }
+    diagram.commit((diag) => {
+      diag.moveParts(grp.memberParts, off, true);
+      updateGroupInteraction(grp);
+    });
+  }
   function updateGroupInteraction(grp, viewb) {
     if (grp instanceof go.GraphObject) grp = grp.part;
     if (!(grp instanceof go.Group)) grp = grp.containingGroup;
     if (!(grp instanceof go.Group)) return;
     if (viewb === undefined) {
-      var sized = grp.findObject("SIZED");
-      if (!sized) return;
-      viewb = sized.getDocumentBounds();
+      let sized = grp.findObject("SIZED");
+      if (!sized) sized = grp;
+      viewb = sized.getDocumentBounds().subtractMargin(PlaceholderMargin);
     }
     grp.memberParts.each((part) => {
       if (part instanceof go.Node && part.isVisible()) {
@@ -523,19 +569,25 @@ const initDiagram = () => {
           part.isInDocumentBounds =
           part.selectionAdorned =
             viewb.intersectsRect(part.actualBounds);
+        // // hide links that connect with nodes that are outside of the group's view
+        // part.findLinksConnected().each(l => {
+        //   if (l.category === "Mapped") l.visible = part.pickable;
+        // });
       }
     });
     updateScrollbars(grp, viewb);
   }
   function updateScrollbars(grp, viewb) {
-    const selad = grp.findAdornment("Selection");
-    if (!selad) return;
+    if (grp instanceof go.GraphObject) grp = grp.part;
+    if (grp instanceof go.Adornment) grp = grp.adornedPart;
+    if (!(grp instanceof go.Group)) return;
     if (viewb === undefined) {
-      var sized = grp.findObject("SIZED");
-      if (!sized) return;
-      viewb = sized.getDocumentBounds();
+      let sized = grp.findObject("SIZED");
+      if (!sized) sized = grp;
+      viewb = sized.getDocumentBounds().subtractMargin(PlaceholderMargin);
     }
-    const panel = selad;
+    const panel = grp.findAdornment("Selection");
+    if (!panel) return;
     const memb = grp.diagram.computePartsBounds(grp.memberParts); //??? ought to skip some but not all invisible parts
     memb.union(memb.x, memb.y, 1, 1); // avoid zero width or height
     const HTHUMB = panel.findObject("HTHUMB");
@@ -725,7 +777,7 @@ const initDiagram = () => {
       stretch: go.GraphObject.Fill,
       isActionable: true,
       actionDown: (e, back) => {
-        // handle click for absolute positioning
+        scrollAt(false, back.part, e.diagram.lastInput.documentPoint);
       },
     }),
     $(go.Shape, {
@@ -740,8 +792,7 @@ const initDiagram = () => {
       alignmentFocus: go.Spot.Left,
       isActionable: true,
       actionMove: (e, thumb) => {
-        const up = e.diagram.lastInput.documentPoint.x < e.diagram.firstInput.documentPoint.x;
-        scrollGroup(thumb.part, "line", up ? "left" : "right", 100);
+        scrollAt(false, thumb.part, e.diagram.lastInput.documentPoint);
       },
     }),
     $(
@@ -775,7 +826,7 @@ const initDiagram = () => {
       stretch: go.GraphObject.Fill,
       isActionable: true,
       actionDown: (e, back) => {
-        // handle click for absolute positioning
+        scrollAt(true, back.part, e.diagram.lastInput.documentPoint);
       },
     }),
     $(go.Shape, {
@@ -790,9 +841,7 @@ const initDiagram = () => {
       alignmentFocus: go.Spot.Top,
       isActionable: true,
       actionMove: (e, thumb) => {
-        const up = e.diagram.lastInput.documentPoint.y < e.diagram.firstInput.documentPoint.y;
-        console.log("스크롤바", e.diagram.lastInput.documentPoint.y);
-        scrollGroup(thumb.part, "line", up ? "up" : "down", e.diagram.lastInput.documentPoint.y);
+        scrollAt(true, thumb.part, e.diagram.lastInput.documentPoint);
       },
     }),
     $(
