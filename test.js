@@ -1,3 +1,4 @@
 const arr1 = [0, 1];
-const arr2 = [0, 1];
-console.log(arr1 === arr2);
+const fixModal = document.querySelector(".fix-modal");
+fixModal.classList.add("on") || fixModal.classList.remove("on");
+console.log("asd");

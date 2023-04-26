@@ -1,5 +1,79 @@
+//@ts-nocheck
+
 import * as go from "gojs";
 import { ReactDiagram } from "gojs-react";
+import { useState, useEffect } from "react";
+import checkLink from "../utils/checkLink";
+import longTarget from "../data/target_long.json";
+import { makeTree } from "../makeTree";
+
+// Constant
+let ROUTINGSTYLE = "Normal";
+
+// Class
+class TreeNode extends go.Node {
+  findVisibleNode() {
+    // redirect links to lowest visible "ancestor" in the tree
+    var n: this | go.Node | null = this;
+    while (n !== null && !n.isVisible()) {
+      n = n.findTreeParentNode();
+    }
+    return n as go.Node | null;
+  }
+}
+class MappingLink extends go.Link {
+  getLinkPoint(
+    node: go.Node | null,
+    port: go.GraphObject,
+    spot: go.Spot,
+    from: boolean,
+    ortho: boolean,
+    othernode: go.Node | null,
+    otherport: go.GraphObject,
+    result?: go.Point
+  ): go.Point {
+    if (ROUTINGSTYLE !== "ToGroup") {
+      console.log("node", node);
+      console.log("spot", spot);
+      console.log("port", port);
+      console.log("from", from);
+      console.log("ortho", ortho);
+      console.log("othernode", othernode?.position.x);
+      console.log("otherport", otherport);
+
+      return super.getLinkPoint(node, port, spot, from, ortho, othernode, otherport);
+    } else {
+      var r = port.getDocumentBounds();
+      var group = node?.containingGroup;
+      var b = group !== null ? group?.actualBounds : node?.actualBounds;
+      var op = othernode?.getDocumentPoint(go.Spot.Center);
+      var x = op?.x! > r.centerX ? b?.right : b?.left;
+      return new go.Point(x, r.centerY);
+    }
+  }
+
+  computePoints() {
+    var result = super.computePoints();
+    if (result && ROUTINGSTYLE === "ToNode") {
+      var fn = this.fromNode;
+      var tn = this.toNode;
+      if (fn && tn) {
+        var fg = fn.containingGroup;
+        var fb = fg ? fg.actualBounds : fn.actualBounds;
+        var fpt = this.getPoint(0);
+        var tg = tn.containingGroup;
+        var tb = tg ? tg.actualBounds : tn.actualBounds;
+        var tpt = this.getPoint(this.pointsCount - 1);
+        this.setPoint(1, new go.Point(fpt.x < tpt.x ? fb.right : fb.left, fpt.y));
+        this.setPoint(
+          this.pointsCount - 2,
+          new go.Point(fpt.x < tpt.x ? tb.left : tb.right, tpt.y)
+        );
+      }
+    }
+    return result;
+  }
+}
 class GroupTreeLayout extends go.TreeLayout {
   initialOrigin() {
     if (this.group) {
@@ -12,7 +86,15 @@ class GroupTreeLayout extends go.TreeLayout {
   }
 } // end of GroupTreeLayout
 
-const init = () => {
+// Function
+const getRandomInt = (min, max) => {
+  min = Math.ceil(min);
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max - min)) + min; //최댓값은 제외, 최솟값은 포함
+};
+
+// Init
+const initDiagram = () => {
   const $ = go.GraphObject.make;
   go.GraphObject.defineBuilder("AutoRepeatButton", function (args) {
     var repeat = go.GraphObject.takeBuilderArgument(args, 50, function (x) {
@@ -321,43 +403,52 @@ const init = () => {
     );
   });
 
-  const myDiagram = $(
-    go.Diagram,
-    // create a Diagram for the DIV HTML element
-    {
-      InitialLayoutCompleted: (e) => e.diagram.nodes.each(updateGroupInteraction),
-      TreeExpanded: (e) => setTimeout(() => updateGroupInteraction(e.subject.first()), 1000),
-      TreeCollapsed: (e) => setTimeout(() => updateGroupInteraction(e.subject.first()), 1000),
-      "resizingTool.dragsMembers": false,
-      "resizingTool.updateAdornments": function (part) {
-        // method override
-        go.ResizingTool.prototype.updateAdornments.call(this, part);
-        const ad = part.findAdornment("Selection");
-        if (ad) {
-          ad.ensureBounds();
-          updateScrollbars(part);
-        }
-      },
-      PartResized: (e) => updateGroupInteraction(e.subject.part),
-      // support mouse scrolling of subgraphs
-      scroll: function (unit, dir, dist) {
-        // override Diagram.scroll
-        if (!dist) dist = 1;
-        var it = this.findPartsAt(this.lastInput.documentPoint).iterator;
-        while (it.next()) {
-          var grp = it.value;
-          if (grp instanceof go.Group) {
-            // if the mouse is in a Group, scroll it
-            scrollGroup(grp, unit, dir, dist);
-            return;
-          }
-        }
-        // otherwise, scroll the viewport normally
-        go.Diagram.prototype.scroll.call(this, unit, dir, dist);
-      },
-    }
-  );
+  const diagram = $(go.Diagram, {
+    // scrollMode: go.Diagram.DocumentScroll,
+    InitialLayoutCompleted: (e) => e.diagram.nodes.each(updateGroupInteraction),
+    "resizingTool.dragsMembers": false,
+    "resizingTool.updateAdornments": function (part) {
+      // method override
+      go.ResizingTool.prototype.updateAdornments.call(this, part);
+      const ad = part.findAdornment("Selection");
+      if (ad) {
+        ad.ensureBounds();
+        updateScrollbars(part);
+      }
+    },
 
+    // 첫 랜더링시 범위 밖에 있는 요소들도 선택될 수 있게끔 하는 옵션
+    PartResized: (e) => updateGroupInteraction(e.subject.part),
+    // support mouse scrolling of subgraphs
+
+    scroll: function (unit, dir, dist) {
+      // override Diagram.scroll
+      if (!dist) dist = 1;
+      var it = this.findPartsAt(this.lastInput.documentPoint).iterator;
+      while (it.next()) {
+        var grp = it.value;
+        if (grp instanceof go.Group) {
+          // if the mouse is in a Group, scroll it
+          console.log("unit", unit, dir, dist);
+          scrollGroup(grp, unit, dir, dist);
+          return;
+        }
+      }
+      // otherwise, scroll the viewport normally
+      go.Diagram.prototype.scroll.call(this, unit, dir, dist);
+    },
+    "commandHandler.copiesTree": true,
+    "commandHandler.deletesTree": true,
+    TreeExpanded: (e) => setTimeout(() => updateGroupInteraction(e.subject.first()), 1000),
+    TreeCollapsed: (e) => setTimeout(() => updateGroupInteraction(e.subject.first()), 1000),
+    // newly drawn links always map a node in one tree to a node in another tree
+    "linkingTool.archetypeLinkData": { category: "Mapping" },
+    "linkingTool.linkValidation": checkLink,
+    "relinkingTool.linkValidation": checkLink,
+    "undoManager.isEnabled": true,
+    // allowVerticalScroll: false,
+    // allowHorizontalScroll: false,
+  });
   function scrollGroup(grp, unit, dir, dist) {
     if (grp instanceof go.GraphObject) grp = grp.part;
     if (grp instanceof go.Adornment) grp = grp.adornedPart;
@@ -374,32 +465,32 @@ const init = () => {
       case "pixel":
         switch (dir) {
           case "up":
-            dy = 10;
+            dy = dist;
             break;
           case "down":
-            dy = -10;
+            dy = -dist;
             break;
           case "left":
-            dx = 10;
+            dx = dist;
             break;
           case "right":
-            dx = -10;
+            dx = -dist;
             break;
         }
         break;
       case "line":
         switch (dir) {
           case "up":
-            dy = 30;
+            dy = dist;
             break;
           case "down":
-            dy = -30;
+            dy = -dist;
             break;
           case "left":
-            dx = 30;
+            dx = dist;
             break;
           case "right":
-            dx = -30;
+            dx = -dist;
             break;
         }
         break;
@@ -418,6 +509,8 @@ const init = () => {
             dx = Math.max(-10, sized.actualBounds.width + 10);
             break;
         }
+        break;
+      default:
         break;
     }
     if (dx > 0) dx = Math.min(dx, view.left + 4 - bnds.left); // top-left margin
@@ -486,19 +579,76 @@ const init = () => {
       VTHUMB.alignment = new go.Spot(0.5, 0, 0, TOP.actualBounds.height + fy * ty);
     }
   }
-  myDiagram.nodeTemplate = $(
-    go.Node,
+  // 애니메이션 제거 속성
+  diagram.animationManager.canStart = () => {
+    return false;
+  };
+
+  diagram.nodeTemplate = $(
+    TreeNode,
     "Horizontal",
-    new go.Binding("location", "loc", go.Point.parse).makeTwoWay(go.Point.stringify),
-    $("TreeExpanderButton"),
+
+    {
+      movable: true,
+      copyable: false,
+      deletable: false,
+      selectionAdorned: false,
+      background: "white",
+      mouseEnter: (e, node) => (node.background = "#d3ebf5"),
+      mouseLeave: (e, node) => (node.background = node.isSelected ? "#d3ebf5" : "white"),
+      click: (e, node) => {
+        console.log(node.findBindingPanel()?.data);
+      },
+      // mouseLeave: (e, node) => (node.background = "white"),
+    },
+    new go.Binding("background", "isSelected", (s) => (s ? "#d3ebf5" : "white")).ofObject(),
+    new go.Binding("fromLinkable", "group", (k) => k === "source"),
+    new go.Binding("toLinkable", "group", (k) => k === "target"),
+
+    $(
+      "TreeExpanderButton", // support expanding/collapsing subtrees
+      {
+        width: 24,
+        height: 24,
+        "ButtonIcon.stroke": "white",
+        "ButtonIcon.strokeWidth": 2,
+        "ButtonBorder.fill": "#83C3D8",
+        "ButtonBorder.stroke": null,
+        "ButtonBorder.figure": "RoundedRectangle",
+        _buttonFillOver: "#5b90a1",
+        _buttonStrokeOver: null,
+        _buttonFillPressed: null,
+        // margin: 10,
+      }
+    ),
+
     $(
       go.Panel,
       "Auto",
-      $(go.Shape, { fill: "lightgray" }, new go.Binding("fill", "color")),
-      $(go.TextBlock, { margin: 4 }, new go.Binding("text"))
+      { position: new go.Point(16, 0) },
+      $(go.Shape, "RoundedRectangle", {
+        fill: "transparent",
+        width: 200,
+        height: 40,
+        stroke: "gray",
+      }),
+
+      $(
+        go.Picture,
+        {
+          source: `${process.env.PUBLIC_URL}/copy.png`,
+          width: 30,
+          height: 30,
+          alignment: go.Spot.Left,
+          margin: 10,
+        },
+        new go.Binding("source", "type", (type) => `${process.env.PUBLIC_URL}/${type}.png`)
+      ),
+      $(go.TextBlock, { alignment: go.Spot.Center }, new go.Binding("text", "name"))
     )
   );
-  myDiagram.linkTemplate = $(
+
+  diagram.linkTemplate = $(
     go.Link,
     {
       isInDocumentBounds: false,
@@ -513,10 +663,23 @@ const init = () => {
     $(go.Shape, { stroke: "gray" })
   );
 
-  myDiagram.groupTemplate = $(
+  diagram.linkTemplateMap.add(
+    "Mapping",
+    $(
+      MappingLink,
+      { isTreeLink: false, isLayoutPositioned: false, layerName: "Foreground" },
+      { fromSpot: go.Spot.Right, toSpot: go.Spot.Left },
+      { relinkableFrom: true, relinkableTo: true },
+      $(go.Shape, { stroke: "teal", strokeWidth: 2 }),
+      $(go.Shape, { toArrow: "Standard", stroke: null, fill: "teal" })
+    )
+  );
+
+  diagram.groupTemplate = $(
     go.Group,
     "Vertical",
     {
+      movable: false,
       selectionObjectName: "SIZED",
       locationObjectName: "SIZED",
       resizable: true,
@@ -551,7 +714,7 @@ const init = () => {
       new go.Binding("desiredSize", "size", go.Size.parse).makeTwoWay(go.Size.stringify)
     )
   );
-  myDiagram.groupTemplate.selectionAdornmentTemplate = $(
+  diagram.groupTemplate.selectionAdornmentTemplate = $(
     go.Adornment,
     "Table",
     $(go.Placeholder, { row: 1, column: 1 }),
@@ -596,7 +759,7 @@ const init = () => {
       isActionable: true,
       actionMove: (e, thumb) => {
         const up = e.diagram.lastInput.documentPoint.x < e.diagram.firstInput.documentPoint.x;
-        scrollGroup(thumb.part, "line", up ? "left" : "right");
+        scrollGroup(thumb.part, "line", up ? "left" : "right", 100);
       },
     }),
     $(
@@ -606,7 +769,7 @@ const init = () => {
         column: 1,
         name: "LEFT",
         alignment: go.Spot.Left,
-        click: (e, but) => scrollGroup(but.part, "pixel", "left"),
+        click: (e, but) => scrollGroup(but.part, "pixel", "left", 100),
       },
       $(go.Shape, "TriangleLeft", { stroke: null, desiredSize: new go.Size(6, 8) })
     ),
@@ -617,7 +780,7 @@ const init = () => {
         column: 1,
         name: "RIGHT",
         alignment: go.Spot.Right,
-        click: (e, but) => scrollGroup(but.part, "pixel", "right"),
+        click: (e, but) => scrollGroup(but.part, "pixel", "right", 100),
       },
       $(go.Shape, "TriangleRight", { stroke: null, desiredSize: new go.Size(6, 8) })
     ),
@@ -646,7 +809,8 @@ const init = () => {
       isActionable: true,
       actionMove: (e, thumb) => {
         const up = e.diagram.lastInput.documentPoint.y < e.diagram.firstInput.documentPoint.y;
-        scrollGroup(thumb.part, "line", up ? "up" : "down");
+        console.log("스크롤바", e.diagram.lastInput.documentPoint.y);
+        scrollGroup(thumb.part, "line", up ? "up" : "down", e.diagram.lastInput.documentPoint.y);
       },
     }),
     $(
@@ -656,7 +820,7 @@ const init = () => {
         column: 2,
         name: "TOP",
         alignment: go.Spot.Top,
-        click: (e, but) => scrollGroup(but.part, "pixel", "up"),
+        click: (e, but) => scrollGroup(but.part, "pixel", "up", 100),
       },
       $(go.Shape, "TriangleUp", { stroke: null, desiredSize: new go.Size(8, 6) })
     ),
@@ -667,81 +831,218 @@ const init = () => {
         column: 2,
         name: "BOTTOM",
         alignment: go.Spot.Bottom,
-        click: (e, but) => scrollGroup(but.part, "pixel", "down"),
+        click: (e, but) => scrollGroup(but.part, "pixel", "down", 100),
       },
       $(go.Shape, "TriangleDown", { stroke: null, desiredSize: new go.Size(8, 6) })
     )
   );
-  myDiagram.model = new go.GraphLinksModel({
+  diagram.model = new go.GraphLinksModel({
     linkKeyProperty: "key",
   });
 
-  return myDiagram;
+  return diagram;
 };
-const GroupScroll = () => {
-  const nodeDataArray = [
-    { key: 0, isGroup: true, text: "Group", loc: "0 0", size: "300 100" },
-    { key: 1, text: "Concept Maps", group: 0 },
-    { key: 2, text: "Organized Knowledge", group: 0 },
-    { key: 3, text: "Context Dependent", group: 0 },
-    { key: 4, text: "Concepts", group: 0 },
-    { key: 5, text: "Propositions", group: 0 },
-    { key: 6, text: "Associated Feelings or Affect", group: 0 },
-    { key: 7, text: "Seven", group: 0 },
-    { key: 8, text: "Eight", group: 0 },
-    { key: 9, text: "Nine", group: 0 },
-    { key: 10, text: "Ten", group: 0 },
-    { key: 11, text: "Concept Maps", group: 0 },
-    { key: 12, text: "Organized Knowledge", group: 0 },
-    { key: 13, text: "Context Dependent", group: 0 },
-    { key: 14, text: "Concepts", group: 0 },
-    { key: 15, text: "Propositions", group: 0 },
-    { key: 16, text: "Associated Feelings or Affect", group: 0 },
-    { key: 17, text: "Seven", group: 0 },
-    { key: 18, text: "Eight", group: 0 },
-    { key: 19, text: "Nine", group: 0 },
-    { key: 20, text: "Ten", group: 0 },
-    { key: 21, text: "Concept Maps", group: 0 },
-    { key: 22, text: "Organized Knowledge", group: 0 },
-    { key: 23, text: "Context Dependent", group: 0 },
-    { key: 24, text: "Concepts", group: 0 },
-    { key: 25, text: "Propositions", group: 0 },
-    { key: 26, text: "Associated Feelings or Affect", group: 0 },
-    { key: 27, text: "Seven", group: 0 },
-    { key: 28, text: "Eight", group: 0 },
-    { key: 29, text: "Nine", group: 0 },
-    { key: 30, text: "Ten", group: 0 },
-    { key: 31, text: "Concept Maps", group: 0 },
-    { key: 32, text: "Organized Knowledge", group: 0 },
-    { key: 33, text: "Context Dependent", group: 0 },
-    { key: 34, text: "Concepts", group: 0 },
-    { key: 35, text: "Propositions", group: 0 },
-    { key: 36, text: "Associated Feelings or Affect", group: 0 },
-    { key: 37, text: "Seven", group: 0 },
-    { key: 38, text: "Eight", group: 0 },
-    { key: 39, text: "Nine", group: 0 },
-    { key: 40, text: "Ten", group: 0 },
-  ];
-  const linkDataArray = [
-    { from: 1, to: 2 },
-    { from: 1, to: 3 },
-    { from: 1, to: 4 },
-    { from: 4, to: 5 },
-    { from: 4, to: 6 },
-    { from: 3, to: 7 },
-    { from: 3, to: 8 },
-    { from: 3, to: 9 },
-    { from: 3, to: 10 },
-  ];
+
+// Data
+const defaultLinkDataArray = [
+  { key: "link_0", from: "source_0", to: "source_1" },
+  { key: "link_1", from: "source_0", to: "source_2" },
+  { key: "link_2", from: "source_0", to: "source_3" },
+  { key: "link_3", from: "source_0", to: "source_4" },
+  { key: "link_4", from: "source_4", to: "source_5" },
+  { key: "link_5", from: "source_4", to: "source_6" },
+  { key: "link_6", from: "source_0", to: "source_7" },
+  { key: "link_7", from: "source_7", to: "source_8" },
+  { key: "link_8", from: "source_7", to: "source_9" },
+  { key: "link_9", from: "source_0", to: "source_10" },
+  { key: "link_10", from: "source_10", to: "source_11" },
+  { key: "link_11", from: "source_10", to: "source_12" },
+  { key: "link_12", from: "source_0", to: "source_13" },
+  { key: "link_13", from: "source_0", to: "source_14" },
+  { key: "link_14", from: "source_0", to: "source_15" },
+  { key: "link_15", from: "source_15", to: "source_16" },
+  { key: "link_16", from: "source_16", to: "source_17" },
+  { key: "link_17", from: "source_16", to: "source_18" },
+  { key: "link_18", from: "source_15", to: "source_19" },
+  { key: "link_19", from: "target_0", to: "target_1" },
+  { key: "link_20", from: "target_0", to: "target_2" },
+  { key: "link_21", from: "target_0", to: "target_3" },
+  { key: "link_22", from: "target_0", to: "target_4" },
+  { key: "link_23", from: "target_4", to: "target_5" },
+  { key: "link_24", from: "target_4", to: "target_6" },
+  { key: "link_25", from: "target_0", to: "target_7" },
+  { key: "link_26", from: "target_7", to: "target_8" },
+  { key: "link_27", from: "target_7", to: "target_9" },
+  { key: "link_28", from: "target_0", to: "target_10" },
+  { key: "link_29", from: "target_10", to: "target_11" },
+  { key: "link_30", from: "target_10", to: "target_12" },
+  { key: "link_31", from: "target_0", to: "target_13" },
+  { key: "link_32", from: "target_0", to: "target_14" },
+  { key: "link_33", from: "target_0", to: "target_15" },
+  { key: "link_34", from: "target_15", to: "target_16" },
+  { key: "link_35", from: "target_16", to: "target_17" },
+  { key: "link_36", from: "target_16", to: "target_18" },
+  { key: "link_37", from: "target_15", to: "target_19" },
+];
+
+// Main Component
+const DoubleTreeMapper = () => {
+  const [sourceDataArray, setSourceDataArray] = useState([
+    { key: "source", isGroup: true, name: "source", xy: "0 0", size: "600 500" },
+    { key: "source_0", name: "Employee", type: "copy", group: "source" },
+    { key: "source_1", name: "id", type: "string", group: "source" },
+    { key: "source_2", name: "name", type: "string", group: "source" },
+    { key: "source_3", name: "salary", type: "string", group: "source" },
+    { key: "source_4", name: "department", group: "source" },
+    { key: "source_5", name: "id", group: "source" },
+    { key: "source_6", name: "name", group: "source" },
+    { key: "source_7", name: "department", group: "source" },
+    { key: "source_8", name: "id", group: "source" },
+    { key: "source_9", name: "name", group: "source" },
+    { key: "source_10", name: "departments", group: "source" },
+    { key: "source_11", name: "id", group: "source" },
+    { key: "source_12", name: "name", group: "source" },
+    { key: "source_13", name: "hobbies", group: "source" },
+    { key: "source_14", name: "ignored", group: "source" },
+    { key: "source_15", name: "Enum", group: "source" },
+    { key: "source_16", name: "department", group: "source" },
+    { key: "source_17", name: "id", group: "source" },
+    { key: "source_18", name: "name", group: "source" },
+    { key: "source_19", name: "hobby", group: "source" },
+  ]);
+  const [targetDataArray, setTargetDataArray] = useState([
+    { key: "target", isGroup: true, name: "target", xy: "650 0", size: "600 500" },
+    { key: "target_0", name: "Employee", group: "target" },
+    { key: "target_1", name: "id", group: "target" },
+    { key: "target_2", name: "name", group: "target" },
+    { key: "target_3", name: "salary", group: "target" },
+    { key: "target_4", name: "department", group: "target" },
+    { key: "target_5", name: "id", group: "target" },
+    { key: "target_6", name: "name", group: "target" },
+    { key: "target_7", name: "department", group: "target" },
+    { key: "target_8", name: "id", group: "target" },
+    { key: "target_9", name: "name", group: "target" },
+    { key: "target_10", name: "departments", group: "target" },
+    { key: "target_11", name: "id", group: "target" },
+    { key: "target_12", name: "name", group: "target" },
+    { key: "target_13", name: "hobbies", group: "target" },
+    { key: "target_14", name: "ignored", group: "target" },
+    { key: "target_15", name: "Enum", group: "target" },
+    { key: "target_16", name: "department", group: "target" },
+    { key: "target_17", name: "id", group: "target" },
+    { key: "target_18", name: "name", group: "target" },
+    { key: "target_19", name: "hobby", group: "target" },
+  ]);
+  const [nodeDataArray, setNodeDataArray] = useState([...sourceDataArray, ...targetDataArray]);
+  const [linkDataArray, setLinkDataArray] = useState(defaultLinkDataArray);
+  const [isChanged, setIsChanged] = useState(false);
+  const onModelChange = (event) => {
+    console.log(event);
+  };
+
+  // Button Hanlde Function
+  const handleClickAddTarget = () => {
+    const newNodeKey = parseInt(targetDataArray[targetDataArray.length - 1].key.split("_")[1]);
+    const newNode = {
+      key: `target_${newNodeKey + 1}`,
+      name: `newNode${newNodeKey + 1}`,
+      group: "target",
+    };
+    const newLink = {
+      key: `link_${linkDataArray.length}`,
+      from: `target_0`,
+      to: `target_${newNodeKey + 1}`,
+    };
+    setTargetDataArray([...targetDataArray, newNode]);
+    setLinkDataArray([...linkDataArray, newLink]);
+  };
+  const handleClickAddSource = () => {
+    const newNodeKey = parseInt(sourceDataArray[sourceDataArray.length - 1].key.split("_")[1]);
+    const newNode = {
+      key: `source_${newNodeKey + 1}`,
+      name: `newNode${newNodeKey + 1}`,
+      group: "source",
+    };
+    const newLink = {
+      key: `link_${linkDataArray.length}`,
+      from: `source_0`,
+      to: `source_${newNodeKey + 1}`,
+    };
+    setSourceDataArray([...sourceDataArray, newNode]);
+    setLinkDataArray([...linkDataArray, newLink]);
+  };
+  const handleClickAddLink = () => {
+    const sourceRandomNum = getRandomInt(1, sourceDataArray.length);
+    const targetRandomNum = getRandomInt(1, targetDataArray.length);
+    const newLinkData = {
+      key: `link_${linkDataArray.length}`,
+      from: `source_${sourceRandomNum}`,
+      to: `target_${targetRandomNum}`,
+      category: "Mapping",
+    };
+    setLinkDataArray([...linkDataArray, newLinkData]);
+    console.log(sourceRandomNum, targetRandomNum);
+  };
+  const handleClickChangeData = () => {
+    setIsChanged(!isChanged);
+    setLinkDataArray(defaultLinkDataArray);
+    if (isChanged) {
+      setNodeDataArray([...sourceDataArray, ...targetDataArray]);
+    } else {
+      const newNodeDataArray = [
+        { key: "source", isGroup: true, name: "source", xy: "0 0", width: 400 },
+        { key: "target", isGroup: true, name: "target", xy: "650 0", width: 10 },
+      ];
+      const newLinkDataArray = [];
+      makeTree({
+        sourceTreeData: longTarget.sourceTreeData,
+        nodeDataArray: newNodeDataArray,
+        linkDataArray: newLinkDataArray,
+        groupKey: "source",
+      });
+      makeTree({
+        sourceTreeData: longTarget.sourceTreeData,
+        nodeDataArray: newNodeDataArray,
+        linkDataArray: newLinkDataArray,
+        groupKey: "target",
+      });
+
+      console.log(newNodeDataArray);
+      console.log(newLinkDataArray);
+      setNodeDataArray(newNodeDataArray);
+      setLinkDataArray(newLinkDataArray);
+      // setLinkDataArray([]);
+    }
+  };
+
+  // useEffect
+  useEffect(() => {
+    setNodeDataArray([...sourceDataArray, ...targetDataArray]);
+  }, [sourceDataArray, targetDataArray]);
+  useEffect(() => {
+    // handleClickChangeData();
+  }, []);
   return (
-    <ReactDiagram
-      initDiagram={init}
-      divClassName="diagram-component"
-      nodeDataArray={nodeDataArray}
-      linkDataArray={linkDataArray}
-      style={{ width: "500px", height: "500px" }}
-    />
+    <>
+      <ReactDiagram
+        initDiagram={initDiagram}
+        divClassName="diagram-component"
+        nodeDataArray={nodeDataArray}
+        linkDataArray={linkDataArray}
+        onModelChange={onModelChange}
+      />
+      {isChanged || (
+        <>
+          <button onClick={handleClickAddSource}>Add Source Node</button>
+          <button onClick={handleClickAddTarget}>Add Target Node</button>
+          <button onClick={handleClickAddLink}>Add Random Link</button>
+        </>
+      )}
+      <button onClick={handleClickChangeData}>
+        {!isChanged ? "Change to New Data" : "Change to Original Data"}
+      </button>
+    </>
   );
 };
 
-export default GroupScroll;
+export default DoubleTreeMapper;
