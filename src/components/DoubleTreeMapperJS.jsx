@@ -940,7 +940,7 @@ const defaultLinkDataArray = [
 // Main Component
 const DoubleTreeMapper = () => {
   const [sourceDataArray, setSourceDataArray] = useState([
-    { key: "source", isGroup: true, name: "source", xy: "0 0", size: "400 600" },
+    { key: "source", isGroup: true, name: "source", xy: "0 0", size: "400 700" },
     { key: "source_0", name: "Employee", type: "copy", group: "source" },
     { key: "source_1", name: "id", type: "string", group: "source" },
     { key: "source_2", name: "name", type: "string", group: "source" },
@@ -963,7 +963,7 @@ const DoubleTreeMapper = () => {
     { key: "source_19", name: "hobby", group: "source" },
   ]);
   const [targetDataArray, setTargetDataArray] = useState([
-    { key: "target", isGroup: true, name: "target", xy: "650 0", size: "400 600" },
+    { key: "target", isGroup: true, name: "target", xy: "650 0", size: "400 700" },
     { key: "target_0", name: "Employee", group: "target" },
     { key: "target_1", name: "id", group: "target" },
     { key: "target_2", name: "name", group: "target" },
