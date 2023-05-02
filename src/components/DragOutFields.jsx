@@ -33,6 +33,7 @@ class FieldDraggingTool extends go.DraggingTool {
       tempPart.location = diagram.lastInput.documentPoint; // need to set location explicitly
       diagram.add(tempPart); // add to Diagram before setting data
       tempPart.data = obj.data; // bind to the same field data as being dragged
+      // console.log(tempPart.layerName);
       return tempPart;
     }
     return super.findDraggablePart();
@@ -48,6 +49,7 @@ class FieldDraggingTool extends go.DraggingTool {
     map.set(this.temporaryPart, new go.DraggingInfo(diagram.lastInput.documentPoint.copy()));
     this.draggedParts = map;
     this.startTransaction("Drag Field");
+    console.log("active");
     diagram.isMouseCaptured = true;
   }
 
@@ -134,8 +136,12 @@ class FieldDraggingTool extends go.DraggingTool {
       document.getElementById("myDroppedFields").textContent +=
         data.name + " (" + data.info + ")\n";
     }
+    if (input.event && id === "testDiv") {
+      document.getElementById("testDiv").textContent += data.name;
+    }
     this.transactionResult = "Dragged Field";
     this.stopTool();
+    console.log("doMouseUp", data);
   }
 }
 function initDiagram() {
@@ -278,6 +284,7 @@ const DragOutFields = () => {
           font: "bold 11pt sans-serif",
         }}
       />
+      <div id="testDiv" style={{ border: "1px solid black", width: 200, height: 200 }} />
     </>
   );
 };
