@@ -8,6 +8,7 @@ import { makeTree } from "../makeTree";
 // Constant
 let ROUTINGSTYLE = "Normal";
 const PlaceholderMargin = new go.Margin(4);
+
 // Class
 class TreeNode extends go.Node {
   findVisibleNode() {
@@ -92,6 +93,143 @@ class GroupTreeLayout extends go.TreeLayout {
     return this.arrangementOrigin;
   }
 } // end of GroupTreeLayout
+
+class FieldDraggingTool extends go.DraggingTool {
+  constructor() {
+    super();
+    this.fieldTemplate = null; // THIS NEEDS TO BE SET before a drag starts
+    this.temporaryPart = null;
+    this.temporaryImage = null;
+  }
+
+  // override this method
+  findDraggablePart() {
+    const diagram = this.diagram;
+    let obj = diagram.findObjectAt(diagram.lastInput.documentPoint);
+    while (obj !== null && obj.type !== go.Panel.TableRow) obj = obj.panel;
+    if (
+      obj !== null &&
+      obj.type === go.Panel.TableRow &&
+      this.fieldTemplate !== null &&
+      this.temporaryPart === null
+    ) {
+      const tempPart = go.GraphObject.make(
+        go.Node,
+        "Table",
+        { layerName: "Tool", locationSpot: go.Spot.Bottom },
+        this.fieldTemplate.copy()
+      ); // copy the template!
+      this.temporaryPart = tempPart;
+      // assume OBJ is now a Panel representing a field, bound to field data
+      // update the temporary Part via data binding
+      tempPart.location = diagram.lastInput.documentPoint; // need to set location explicitly
+      diagram.add(tempPart); // add to Diagram before setting data
+      tempPart.data = obj.data; // bind to the same field data as being dragged
+      return tempPart;
+    }
+    return super.findDraggablePart();
+  }
+
+  doActivate() {
+    if (this.temporaryPart === null) return super.doActivate();
+    const diagram = this.diagram;
+    this.standardMouseSelect();
+    this.isActive = true;
+    // instead of the usual result of computeEffectiveCollection, just use the temporaryPart alone
+    const map = new go.Map(/*go.Part, go.DraggingInfo*/);
+    map.set(this.temporaryPart, new go.DraggingInfo(diagram.lastInput.documentPoint.copy()));
+    this.draggedParts = map;
+    this.startTransaction("Drag Field");
+    diagram.isMouseCaptured = true;
+  }
+
+  doDeactivate() {
+    if (this.temporaryPart === null) return super.doDeactivate();
+    const diagram = this.diagram;
+    // make sure the temporary Part is no longer in the Diagram
+    diagram.remove(this.temporaryPart);
+    this.temporaryPart = null;
+    if (this.temporaryImage !== null) {
+      document.body.removeChild(this.temporaryImage);
+      this.temporaryImage = null;
+    }
+    // now do all the standard deactivation cleanup,
+    // including setting isActive = false, clearing out draggedParts, calling stopTransaction(),
+    // and setting diagram.isMouseCaptured = false
+    super.doDeactivate();
+  }
+
+  makeImage() {
+    if (this.temporaryPart === null) return null;
+    const parts = new go.List();
+    parts.add(this.temporaryPart);
+    return this.diagram.makeImage({
+      parts: parts,
+      showTemporary: true,
+      callback: (img) => {
+        this.temporaryImage = img;
+        img.style.position = "absolute";
+        img.style.pointerEvents = "none";
+        img.style.zIndex = 999;
+        document.body.appendChild(img);
+        this.temporaryPart.opacity = 0;
+      },
+    });
+  }
+
+  doMouseMove() {
+    if (!this.isActive) return;
+    if (this.temporaryPart === null) return super.doMouseMove();
+    const diagram = this.diagram;
+    // just move the temporaryPart (in draggedParts), without regard to moving or copying permissions of the Node
+    const offset = diagram.lastInput.documentPoint
+      .copy()
+      .subtract(diagram.firstInput.documentPoint);
+    this.moveParts(this.draggedParts, offset, false);
+    if (diagram.viewportBounds.containsPoint(diagram.lastInput.documentPoint)) {
+      if (this.temporaryPart.opacity !== 1) {
+        this.temporaryPart.opacity = 1;
+        if (this.temporaryImage !== null) {
+          document.body.removeChild(this.temporaryImage);
+          this.temporaryImage = null;
+        }
+      }
+    } else {
+      if (this.temporaryPart.opacity === 1) {
+        this.makeImage(); // also sets temporaryPart.opacity = 0
+      }
+      // move a temporary Image element instead
+      const img = this.temporaryImage;
+      if (img !== null) {
+        const e = diagram.lastInput.event;
+        img.style.left = window.scrollX + e.clientX - img.width / 2 + "px";
+        img.style.top = window.scrollY + e.clientY - img.height / 2 + "px";
+        // position the Image to be just above the mouse pointer
+      }
+    }
+  }
+
+  doMouseUp() {
+    if (!this.isActive) return;
+    if (this.temporaryPart === null) return super.doMouseUp();
+    const diagram = this.diagram;
+    const data = this.temporaryPart.data;
+    const input = diagram.lastInput;
+    let id = input.event.target.id;
+    if (input.isTouchEvent) {
+      // Touch events always target the first object touched, we want the last.
+      // Determine if you are using Touch or Pointer:
+      const evt = input.event.changedTouches ? input.event.changedTouches[0] : input.event;
+      id = document.elementFromPoint(evt.clientX, evt.clientY).id;
+    }
+    if (input.event && id === "myDroppedFields") {
+      document.getElementById("myDroppedFields").textContent +=
+        data.name + " (" + data.info + ")\n";
+    }
+    this.transactionResult = "Dragged Field";
+    this.stopTool();
+  }
+}
 
 // Function
 const getRandomInt = (min, max) => {
@@ -411,7 +549,10 @@ const initDiagram = () => {
   });
 
   const diagram = $(go.Diagram, {
-    // scrollMode: go.Diagram.DocumentScroll,
+    // drag
+    validCycle: go.Diagram.CycleNotDirected, // don't allow loops
+    draggingTool: $(FieldDraggingTool), // use custom DraggingTool
+
     InitialLayoutCompleted: (e) => e.diagram.nodes.each(updateGroupInteraction),
     "resizingTool.dragsMembers": false,
     "resizingTool.updateAdornments": function (part) {
