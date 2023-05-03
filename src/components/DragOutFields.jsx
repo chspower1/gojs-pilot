@@ -14,6 +14,7 @@ class FieldDraggingTool extends go.DraggingTool {
   findDraggablePart() {
     const diagram = this.diagram;
     let obj = diagram.findObjectAt(diagram.lastInput.documentPoint);
+    console.log("1 obj", obj);
     while (obj !== null && obj.type !== go.Panel.TableRow) obj = obj.panel;
     if (
       obj !== null &&

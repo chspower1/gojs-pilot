@@ -25,19 +25,6 @@ class TreeNode extends go.Node {
 class MappingLink extends go.Link {
   getLinkPoint(node, port, spot, from, ortho, othernode, otherport) {
     if (ROUTINGSTYLE !== "ToGroup") {
-      // console.log("node", node.position.y);
-      // console.log("spot", spot);
-      // console.log("port", port);
-      // console.log("from", from);
-      // console.log("ortho", ortho);
-      // console.log("othernode", othernode.position.y);
-      // console.log("otherport", otherport);
-
-      // return super.getLinkPoint(node, port, spot, from, ortho, othernode, otherport);
-      // console.log(
-      //   "------",
-      //   super.getLinkPoint(node, port, spot, from, ortho, othernode, otherport)
-      // );
       if (from) {
         if (node.position.y > 600) return new go.Point(400, 600);
         else if (node.position.y < 0) return new go.Point(400, 0);
@@ -108,6 +95,7 @@ class FieldDraggingTool extends go.DraggingTool {
   findDraggablePart() {
     const diagram = this.diagram;
     let obj = diagram.findObjectAt(diagram.lastInput.documentPoint);
+    console.log("obj", obj);
     while (obj !== null && obj.type !== go.Panel.TableRow) obj = obj.panel;
     if (
       obj !== null &&
@@ -820,9 +808,8 @@ const initDiagram = () => {
   diagram.nodeTemplate = $(
     TreeNode,
     "Horizontal",
-
     {
-      movable: true,
+      movable: false,
       copyable: false,
       deletable: false,
       selectionAdorned: false,
@@ -834,8 +821,8 @@ const initDiagram = () => {
       },
     },
     new go.Binding("background", "isSelected", (s) => (s ? "#d3ebf5" : "white")).ofObject(),
-    new go.Binding("fromLinkable", "group", (k) => k === "source"),
-    new go.Binding("toLinkable", "group", (k) => k === "target"),
+    // new go.Binding("fromLinkable", "group", (k) => k === "source"),
+    // new go.Binding("toLinkable", "group", (k) => k === "target"),
 
     $(
       "TreeExpanderButton", // support expanding/collapsing subtrees
@@ -864,7 +851,6 @@ const initDiagram = () => {
         height: 40,
         stroke: "gray",
       }),
-
       $(
         go.Picture,
         {
