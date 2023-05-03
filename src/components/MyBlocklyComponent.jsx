@@ -17,8 +17,8 @@ function MyBlocklyComponent() {
 
   const handleClickButton = () => {
     const workspace = Blockly.getMainWorkspace().getAllBlocks();
-    console.log("all", workspace);
-    console.log("1", workspace[1].id);
+    // console.log("all", workspace);
+    // console.log("1", workspace[1].id);
     // const newBlock = Blockly.getMainWorkspace().newBlock("path");
     workspace[0].setFieldValue("casdasdasdasdc", "source_input");
   };

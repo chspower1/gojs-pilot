@@ -127,9 +127,13 @@ class FieldDraggingTool extends go.DraggingTool {
     const diagram = this.diagram;
     const data = this.temporaryPart.data;
     const input = diagram.lastInput;
-    let target = input.event.target;
-    let parent = input.event.target?.parentNode?.parentNode;
-    let id = parent?.getAttribute("data-id");
+    const target = input.event.target;
+    const targetClassList = target.classList;
+    console.log(target.parentNode.parentNode);
+    console.log(target.parentNode.previousSibling);
+    const parent = target?.parentNode?.parentNode;
+    const sibling = target?.parentNode?.previousSibling;
+    const id = parent?.getAttribute("data-id");
 
     const targetIdx = blocklyWorkspace.findIndex((block) => block.id === id);
 
@@ -146,12 +150,29 @@ class FieldDraggingTool extends go.DraggingTool {
 
     // pilot code
     if (input.event) {
-      blocklyWorkspace[targetIdx].setFieldValue(data.name, "source_input");
-      console.log(
-        `parent-id:${id} \n target:${target} \n data: ${data} \n parent : ${parent}`,
-        parent
-      );
-      console.log(target);
+      if (
+        targetClassList.contains("source_label") ||
+        target?.parentNode?.previousSibling?.children[0]?.classList.contains("source_label")
+      ) {
+        blocklyWorkspace[targetIdx]?.setFieldValue(data.name, "source_input");
+        console.log("source영역");
+      } else if (
+        targetClassList.contains("target_label") ||
+        target?.parentNode?.previousSibling?.children[0]?.classList.contains("target_label")
+      ) {
+        blocklyWorkspace[targetIdx]?.setFieldValue(data.name, "target_input");
+        console.log("target영역");
+      }
+
+      // console.log(sibling);
+      // console.log("target", target);
+      // console.log(targetIdx);
+      // console.dir(
+      //   `parent-id:${id} \n target:${target} \n data: ${data} \n parent : ${parent}`,
+      //   parent
+      // );
+
+      // console.log(target.parentNode);
       // document.getElementById("testDiv").textContent += data.name;
     }
     this.transactionResult = "Dragged Field";
