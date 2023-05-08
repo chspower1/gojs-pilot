@@ -9,8 +9,9 @@ export default function App() {
   return (
     <>
       {/* <DoubleTreeMapperJS /> */}
-      <DragOutFields />
-      <Final />
+      {/* <DragOutFields /> */}
+      {/* <Final /> */}
+      <DragOutFieldsWithBlockly />
     </>
   );
 }

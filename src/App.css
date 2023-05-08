@@ -1,6 +1,12 @@
 .diagram-component {
-  width: 1000px;
-  height: 500px;
+  width: 1200px;
+  height: 700px;
+  border: solid 1px black;
+  background-color: white;
+}
+.diagram-component2 {
+  width: 500px;
+  height: 300px;
   border: solid 1px black;
   background-color: white;
 }

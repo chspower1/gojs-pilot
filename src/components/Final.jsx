@@ -1159,7 +1159,7 @@ const Final = () => {
       const sourceNode = nodeDataArray.filter((node) => node.key === mappingLinkDataArr[0].from)[0];
       const targetNode = nodeDataArray.filter((node) => node.key === mappingLinkDataArr[0].to)[0];
       console.log("source,target Node", sourceNode, targetNode);
-      let initXml = `<xml><block type="path"><field name="source_input">${sourceNode.name}</field><field name="target_input">${targetNode.name}</field></block></xml>`;
+      let initXml = `<xml><block type="path"><field name="source_input"> ${sourceNode.name} ( ${sourceNode.key} ) </field><field name="target_input"> ${targetNode.name} ( ${targetNode.key} ) </field></block></xml>`;
       Blockly.Xml.appendDomToWorkspace(Blockly.Xml.textToDom(initXml), blocklyWorkspace);
       // blocklyWorkspace.newBlock("123", "123");
       console.log("workSpace", blocklyWorkspace);
@@ -1172,18 +1172,21 @@ const Final = () => {
 
   return (
     <>
-      <ReactDiagram
-        initDiagram={initDiagram}
-        divClassName="diagram-component"
-        nodeDataArray={nodeDataArray}
-        linkDataArray={linkDataArray}
-        onModelChange={handleChangeModel}
-      />
-      <pre>
-        {updateLinkData.map(
-          (content, index) => `${index}\nfrom : ${content.from}\n target : ${content.to}\n`
-        )}
-      </pre>
+      <div style={{ display: "flex" }}>
+        <ReactDiagram
+          initDiagram={initDiagram}
+          divClassName="diagram-component"
+          nodeDataArray={nodeDataArray}
+          linkDataArray={linkDataArray}
+          onModelChange={handleChangeModel}
+        />
+        <pre style={{ padding: "30px", border: "1px solid black", width: "200px" }}>
+          {updateLinkData.map(
+            (content, index) =>
+              `${index}\nfrom : ${content.from}\n target : ${content.to}\n---------------\n`
+          )}
+        </pre>
+      </div>
       <MyBlocklyComponent />
     </>
   );
