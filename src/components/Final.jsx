@@ -808,8 +808,9 @@ const initDiagram = () => {
   diagram.nodeTemplate = $(
     TreeNode,
     "Horizontal",
+
     {
-      movable: false,
+      movable: true,
       copyable: false,
       deletable: false,
       selectionAdorned: false,
@@ -817,12 +818,12 @@ const initDiagram = () => {
       mouseEnter: (e, node) => (node.background = "#d3ebf5"),
       mouseLeave: (e, node) => (node.background = node.isSelected ? "#d3ebf5" : "white"),
       click: (e, node) => {
-        // console.log(node.findBindingPanel()?.data);
+        console.log(node.findBindingPanel()?.data);
       },
     },
     new go.Binding("background", "isSelected", (s) => (s ? "#d3ebf5" : "white")).ofObject(),
-    // new go.Binding("fromLinkable", "group", (k) => k === "source"),
-    // new go.Binding("toLinkable", "group", (k) => k === "target"),
+    new go.Binding("fromLinkable", "group", (k) => k === "source"),
+    new go.Binding("toLinkable", "group", (k) => k === "target"),
 
     $(
       "TreeExpanderButton", // support expanding/collapsing subtrees
@@ -851,6 +852,7 @@ const initDiagram = () => {
         height: 40,
         stroke: "gray",
       }),
+
       $(
         go.Picture,
         {
@@ -1145,6 +1147,29 @@ const nodeDataArray = [
 ];
 // Main Component
 const Final = () => {
+  const [updateLinkData, setUpdateLinkData] = useState([]);
+
+  const handleChangeModel = (e) => {
+    console.log(e);
+    const blocklyWorkspace = Blockly.getMainWorkspace();
+    const mappingLinkDataArr = e.modifiedLinkData.filter(
+      (linkData) => linkData.category === "Mapping"
+    );
+    if (mappingLinkDataArr.length) {
+      const sourceNode = nodeDataArray.filter((node) => node.key === mappingLinkDataArr[0].from)[0];
+      const targetNode = nodeDataArray.filter((node) => node.key === mappingLinkDataArr[0].to)[0];
+      console.log("source,target Node", sourceNode, targetNode);
+      let initXml = `<xml><block type="path"><field name="source_input">${sourceNode.name}</field><field name="target_input">${targetNode.name}</field></block></xml>`;
+      Blockly.Xml.appendDomToWorkspace(Blockly.Xml.textToDom(initXml), blocklyWorkspace);
+      // blocklyWorkspace.newBlock("123", "123");
+      console.log("workSpace", blocklyWorkspace);
+      // Blockly.Xml.appendDomToWorkspace(initXml, blocklyWorkspace);
+    }
+
+    setUpdateLinkData([...updateLinkData, ...mappingLinkDataArr]);
+    console.log(updateLinkData);
+  };
+
   return (
     <>
       <ReactDiagram
@@ -1152,7 +1177,13 @@ const Final = () => {
         divClassName="diagram-component"
         nodeDataArray={nodeDataArray}
         linkDataArray={linkDataArray}
+        onModelChange={handleChangeModel}
       />
+      <pre>
+        {updateLinkData.map(
+          (content, index) => `${index}\nfrom : ${content.from}\n target : ${content.to}\n`
+        )}
+      </pre>
       <MyBlocklyComponent />
     </>
   );
