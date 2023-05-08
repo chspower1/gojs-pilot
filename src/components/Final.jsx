@@ -1102,7 +1102,7 @@ const linkDataArray = [
   { key: "link_37", from: "target_15", to: "target_19" },
 ];
 const nodeDataArray = [
-  { key: "source", isGroup: true, name: "source", xy: "0 0", size: "400 700" },
+  { key: "source", isGroup: true, name: "source", xy: "0 0", size: "400 600" },
   { key: "source_0", name: "Employee", type: "copy", group: "source" },
   { key: "source_1", name: "id", type: "string", group: "source" },
   { key: "source_2", name: "name", type: "string", group: "source" },
@@ -1123,7 +1123,7 @@ const nodeDataArray = [
   { key: "source_17", name: "id", group: "source" },
   { key: "source_18", name: "name", group: "source" },
   { key: "source_19", name: "hobby", group: "source" },
-  { key: "target", isGroup: true, name: "target", xy: "650 0", size: "400 700" },
+  { key: "target", isGroup: true, name: "target", xy: "650 0", size: "400 600" },
   { key: "target_0", name: "Employee", group: "target" },
   { key: "target_1", name: "id", group: "target" },
   { key: "target_2", name: "name", group: "target" },

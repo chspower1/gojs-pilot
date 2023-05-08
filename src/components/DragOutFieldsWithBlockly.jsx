@@ -279,9 +279,9 @@ const nodeDataArray = [
   {
     key: "Record1",
     fields: [
-      { name: "field1", color: "#F7B84B", figure: "Ellipse" },
-      { name: "field2", info: "the second one", color: "#F25022", figure: "Ellipse" },
-      { name: "fieldThree", info: "3rd", color: "#00BCF2" },
+      { name: "가", color: "#F7B84B", figure: "Ellipse" },
+      { name: "나", info: "the second one", color: "#F25022", figure: "Ellipse" },
+      { name: "다", info: "3rd", color: "#00BCF2" },
     ],
     loc: "0 0",
   },
@@ -289,14 +289,14 @@ const nodeDataArray = [
     key: "Record2",
     fields: [
       {
-        name: "fieldA",
+        name: "A",
         color: "#FFB900",
         figure: "Diamond",
         info: "diamond",
       },
-      { name: "fieldB", color: "green", figure: "Circle", info: "circle" },
-      { name: "fieldC", color: "red", figure: "Triangle", info: "triangle" },
-      { name: "fieldD", figure: "XLine", info: "X" },
+      { name: "B", color: "green", figure: "Circle", info: "circle" },
+      { name: "C", color: "red", figure: "Triangle", info: "triangle" },
+      { name: "D", figure: "XLine", info: "X" },
     ],
     loc: "250 0",
   },
@@ -309,15 +309,15 @@ const DragOutFieldsWithBlockly = () => {
     <>
       <ReactDiagram
         initDiagram={initDiagram}
-        divClassName="diagram-component"
+        divClassName="diagram-component2"
         nodeDataArray={nodeDataArray}
       />
-      <div
+      {/* <div
         id="redBox"
         key="redBoxKey"
         style={{ width: 200, height: 200, backgroundColor: "red" }}
-      ></div>
-      <button onClick={() => {}}>보기</button>
+      ></div> */}
+      {/* <button onClick={() => {}}>보기</button> */}
       <MyBlocklyComponent />
     </>
   );
