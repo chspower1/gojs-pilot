@@ -10,8 +10,8 @@ export default function App() {
     <>
       {/* <DoubleTreeMapperJS /> */}
       {/* <DragOutFields /> */}
-      {/* <Final /> */}
-      <DragOutFieldsWithBlockly />
+      <Final />
+      {/* <DragOutFieldsWithBlockly /> */}
     </>
   );
 }

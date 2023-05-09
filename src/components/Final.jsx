@@ -96,10 +96,10 @@ class FieldDraggingTool extends go.DraggingTool {
     const diagram = this.diagram;
     let obj = diagram.findObjectAt(diagram.lastInput.documentPoint);
     console.log("obj", obj);
-    while (obj !== null && obj.type !== go.Panel.TableRow) obj = obj.panel;
+    while (obj !== null && obj.type !== go.Panel.Horizontal) obj = obj.panel;
     if (
       obj !== null &&
-      obj.type === go.Panel.TableRow &&
+      obj.type === go.Panel.Horizontal &&
       this.fieldTemplate !== null &&
       this.temporaryPart === null
     ) {
@@ -804,7 +804,30 @@ const initDiagram = () => {
   diagram.animationManager.canStart = () => {
     return false;
   };
+  const fieldTemplate = $(
+    go.Panel,
+    "Auto",
+    { position: new go.Point(16, 0) },
+    $(go.Shape, "RoundedRectangle", {
+      fill: "transparent",
+      width: 200,
+      height: 40,
+      stroke: "gray",
+    }),
 
+    $(
+      go.Picture,
+      {
+        source: `${process.env.PUBLIC_URL}/copy.png`,
+        width: 30,
+        height: 30,
+        alignment: go.Spot.Left,
+        margin: 10,
+      },
+      new go.Binding("source", "type", (type) => `${process.env.PUBLIC_URL}/${type}.png`)
+    ),
+    $(go.TextBlock, { alignment: go.Spot.Center }, new go.Binding("text", "name"))
+  );
   diagram.nodeTemplate = $(
     TreeNode,
     "Horizontal",
@@ -822,8 +845,8 @@ const initDiagram = () => {
       },
     },
     new go.Binding("background", "isSelected", (s) => (s ? "#d3ebf5" : "white")).ofObject(),
-    new go.Binding("fromLinkable", "group", (k) => k === "source"),
-    new go.Binding("toLinkable", "group", (k) => k === "target"),
+    // new go.Binding("fromLinkable", "group", (k) => k === "source"),
+    // new go.Binding("toLinkable", "group", (k) => k === "target"),
 
     $(
       "TreeExpanderButton", // support expanding/collapsing subtrees
@@ -841,33 +864,9 @@ const initDiagram = () => {
         // margin: 10,
       }
     ),
-
-    $(
-      go.Panel,
-      "Auto",
-      { position: new go.Point(16, 0) },
-      $(go.Shape, "RoundedRectangle", {
-        fill: "transparent",
-        width: 200,
-        height: 40,
-        stroke: "gray",
-      }),
-
-      $(
-        go.Picture,
-        {
-          source: `${process.env.PUBLIC_URL}/copy.png`,
-          width: 30,
-          height: 30,
-          alignment: go.Spot.Left,
-          margin: 10,
-        },
-        new go.Binding("source", "type", (type) => `${process.env.PUBLIC_URL}/${type}.png`)
-      ),
-      $(go.TextBlock, { alignment: go.Spot.Center }, new go.Binding("text", "name"))
-    )
+    fieldTemplate
   );
-
+  diagram.toolManager.draggingTool.fieldTemplate = fieldTemplate;
   diagram.linkTemplate = $(
     go.Link,
     {
@@ -1178,7 +1177,7 @@ const Final = () => {
           divClassName="diagram-component"
           nodeDataArray={nodeDataArray}
           linkDataArray={linkDataArray}
-          onModelChange={handleChangeModel}
+          // onModelChange={handleChangeModel}
         />
         <pre style={{ padding: "30px", border: "1px solid black", width: "200px" }}>
           {updateLinkData.map(
